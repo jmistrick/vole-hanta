@@ -75,16 +75,35 @@ netmets_full <- left_join(netmets21.22, fulltrap21.22, by=c("tag", "site", "year
 
 #########################################   LOAD & CLEAN PUUV IFA DATA   ########################################
 
+
+
+
+
+
+
+
+
+
 #load, clean, format PUUV IFA data
-puuv_data <- read.csv(here("puuv_ifa.csv")) %>%
+
+### NEW! Updated! PUUV_IFA with the samples from 2021/2022 that KWearing re-ran in May 2023 (code updated 6.7.23)
+puuv_data <- read.csv(here("puuv_ifa_06.07.23.csv")) %>%
   clean_names %>%
-  #populate column of FINAL PUUV status (result of second run if two runs were done, else result of first run)
-  mutate(FINAL_puuv = ifelse(is.na(puuv_confirm), as.character(puuv_initial), as.character(puuv_confirm))) %>%
+  #populate column of FINAL PUUV status
+  #kind of a pain now, since samples could be run 1-4x but we want the result of the last run as the 'final' status
+  #columns are named as 'puuv_run1' 'puuv_run2' 'puuv_run3' 'puuv_run4'
+  mutate(FINAL_puuv = ifelse(!is.na(puuv_run4), as.character(puuv_run4), 
+                             ifelse(!is.na(puuv_run3), as.character(puuv_run3),
+                                    ifelse(!is.na(puuv_run2), as.character(puuv_run2), as.character(puuv_run1))))) %>%
   mutate(samp_id = as.numeric(id),
-         date_initial = as_date(date_initial, format= "%m/%d/%Y"),
-         puuv_initial = as.factor(puuv_initial),
-         date_confirm = as_date(date_confirm, format= "%m/%d/%Y"),
-         puuv_confirm = as.factor(puuv_confirm),
+         # date_run1 = as_date(date_run1, format= "%m/%d/%Y"),
+         # puuv_run1 = as.factor(puuv_run1),
+         # date_run2 = as_date(date_run2, format= "%m/%d/%Y"),
+         # puuv_run2 = as.factor(puuv_run2),
+         # date_run3 = as_date(date_run3, format= "%m/%d/%Y"),
+         # puuv_run3 = as.factor(puuv_run3),
+         # date_run4 = as_date(date_run4, format= "%m/%d/%Y"),
+         # puuv_run4 = as.factor(puuv_run4),
          FINAL_puuv = as.factor(FINAL_puuv)) %>%
   drop_na(FINAL_puuv) %>%
   dplyr::select(FINAL_puuv, samp_id) %>%
