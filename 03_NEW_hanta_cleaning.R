@@ -1,3 +1,5 @@
+### AS OF JUNE 8 2023 - this code is running using the "..._STSB" versions of netmets - has breeders/nonbreeders ###
+
 # code run using R version 4.1.2 (2021-11-01) -- "Bird Hippie"
 
 #load libraries
@@ -12,230 +14,236 @@ library(lme4)
 rm(list = ls())
 
 
+#### all the steps to generate 'netmets_puuv' have been commented out as of 06.08.23 - readRDS to load file
 
-##########---------- LOAD NETWORK METRICS and VOLE CAPTURE METADATA -----------###########
-
-### Fulltrap and netmets dfs created separately, load 2021 and 2022 data here, clean as needed
-
-### INDIVIDUAL VOLE METADATA by year
-    # >> FROM OTHER R PROJECT! << (hence why I'm not using 'here()')
-fulltrap21 <- readRDS(file="../vole-spatial-v2/fulltrap21_05.10.23.rds") #go up a level from current wd, then down to file
-fulltrap22 <- readRDS(file="../vole-spatial-v2/fulltrap22_05.10.23.rds") 
-
-###### THESE VERSIONS OF FULLTRAP do have all the animals (breeders and nonbreeders) but as of 5/11 I only constructed networks for breeders
-    ## it doesn't really matter since netmets files only have data on the breeders and I left_join the trapping data to netmets
-
-## >>NOTE<< overwintered animals may incorrectly have firstcap==1 in 2022
-    # PIT tag: 21895 Occ2Sess1 at Vaarinkorpi
-    # PIT tag: 226280 Occ2Sess2 at Kuoppa
-# FULLtrap <- rbind(fulltrap21, fulltrap22)
-# OW <- FULLtrap %>% 
-#   group_by(tag) %>% arrange(year, occ.sess, .by_group = TRUE) %>%
-#   filter(n_distinct(year) > 1)
-# write.csv(OW, here("overwinter21-22.csv"))
-
-#join 21 and 22 fulltrap data; correct firstcap for 2022
-fulltrap21.22 <- rbind(fulltrap21, fulltrap22) %>%
-  group_by(tag) %>% arrange(tag, year, occ.sess, .by_group = TRUE) %>%
-  mutate(firstcap = ifelse(date_time == min(date_time), 1, 0)) %>%
-  mutate(firstcap = factor(firstcap)) %>%
-#remove may; keep one entry per tag,year,month; pull only relevant columns
-  filter(month!="may") %>% 
-  ungroup() %>% group_by(tag, year, month) %>%
-  slice(1) %>%
-  select(year, site, trt, month, tag, sex, samp_id, traps_per_life, caps_per_life) 
-
-### NETWORK METRICS
-netmets21 <- readRDS(file="../vole-spatial-v2/netmets21.rds") %>%
-  mutate(year=as.numeric(2021))
-netmets22 <- readRDS(file="../vole-spatial-v2/netmets22.rds") %>%
-  mutate(year=as.numeric(2022))
-
-netmets21.22 <- rbind(netmets21, netmets22)
-
-### NETWORK METRICS + METADATA
-
-netmets_full <- left_join(netmets21.22, fulltrap21.22, by=c("tag", "site", "year", "month")) %>%
-  mutate(site=as.factor(site),
-         year=as.factor(year),
-         month = as.factor(month),
-         month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>%
-  select(!c(focal_id)) %>% #remove duplicate column
-  relocate(c(year, site, trt, month, n.node, avg.wt.deg, tag, sex, samp_id), .before = wt.deg)
-
-# saveRDS(netmets_full, here("netmets_full_05.10.23.rds"))
-
-# #visualize degree by month for trt and year
-# netmets_full %>%
-#   ggplot(aes(x=month, y=wt.deg, fill=trt)) +
-#   geom_violin() +
-#   facet_wrap(~year, nrow=2)
-
-
-
-#########################################   LOAD & CLEAN PUUV IFA DATA   ########################################
-
-
-
-
-
-
-
-
-
-
-#load, clean, format PUUV IFA data
-
-### NEW! Updated! PUUV_IFA with the samples from 2021/2022 that KWearing re-ran in May 2023 (code updated 6.7.23)
-puuv_data <- read.csv(here("puuv_ifa_06.07.23.csv")) %>%
-  clean_names %>%
-  #populate column of FINAL PUUV status
-  #kind of a pain now, since samples could be run 1-4x but we want the result of the last run as the 'final' status
-  #columns are named as 'puuv_run1' 'puuv_run2' 'puuv_run3' 'puuv_run4'
-  mutate(FINAL_puuv = ifelse(!is.na(puuv_run4), as.character(puuv_run4), 
-                             ifelse(!is.na(puuv_run3), as.character(puuv_run3),
-                                    ifelse(!is.na(puuv_run2), as.character(puuv_run2), as.character(puuv_run1))))) %>%
-  mutate(samp_id = as.numeric(id),
-         # date_run1 = as_date(date_run1, format= "%m/%d/%Y"),
-         # puuv_run1 = as.factor(puuv_run1),
-         # date_run2 = as_date(date_run2, format= "%m/%d/%Y"),
-         # puuv_run2 = as.factor(puuv_run2),
-         # date_run3 = as_date(date_run3, format= "%m/%d/%Y"),
-         # puuv_run3 = as.factor(puuv_run3),
-         # date_run4 = as_date(date_run4, format= "%m/%d/%Y"),
-         # puuv_run4 = as.factor(puuv_run4),
-         FINAL_puuv = as.factor(FINAL_puuv)) %>%
-  drop_na(FINAL_puuv) %>%
-  dplyr::select(FINAL_puuv, samp_id) %>%
-  rename(puuv_ifa = FINAL_puuv)
-#output is a df with two columns, sample ID and PUUV status (0,1)
-
-# Save puuv_data to a rdata file
-# saveRDS(puuv_data, file = here("hantadata_02.28.23.rds"))
-
-# Restore puuv_data from the rdata file
-# puuv_data <- readRDS(file = "hantadata_02.28.23.rds")
-
-################################## LOAD NETMETS data and COMBINE with PUUV data ##########################################
-
-#join puuv_data to netmets_full (BOTH YEARS!)
-netmets_puuv <- left_join(netmets_full, puuv_data, by="samp_id") %>% 
-  #left join on netmets_full because I need to have network data
-  relocate(puuv_ifa, .after="samp_id") %>%
-  select(!samp_id) %>%
-  drop_na(puuv_ifa) #drop any animals without puuv data
-
-######## THIS SEEMS EXTREME: there is PUUV data on 2259 samples -- I have network data on 2277 animals
-######## But then when we combine these, there are only 2149 animals with both PUUV and network data
-    ##### which means we're missing network data for 128 animals that we have PUUV data for
-    ##### which seems hard to believe when I only cut out may networks and uusi site
-
-
-############ REMOVE THE VOLES from net_mets_puuv THAT SEROCONVERT POS TO NEG ##################
-
-#voles that seroconvert PUUV+ to PUUV-
-puuv_pos_neg <- netmets_puuv %>% group_by(tag) %>% arrange(year, month, .by_group = TRUE) %>%
-  dplyr::select(year, month, tag, puuv_ifa) %>%
-  summarise(status_time = toString(puuv_ifa)) %>%
-  filter(str_detect(status_time, "1,\\s0")) #filter for animals that go from pos to neg
-#pull the PIT tags
-problemchildren <- puuv_pos_neg$tag
-#filter netmetsPUUV to remove 'problemchildren'
-netmets_puuv <- netmets_puuv %>%
-  filter(!tag %in% problemchildren)
-
-## NOW NETMETS_PUUV has ONLY the [BREEDING] animals that:  ##
-    #       1. Have network data
-    #       2. Have PUUV IFA data
-    #       3. DON'T seroconvert from PUUV+ to PUUV-
-
-
-###############################################################################
-### exploratoriness of breeders ###
-## based off of VanderWaal ground squirrel ms ##
-#https://modelr.tidyverse.org/reference/add_predictions.html
-
-onepertag <- netmets_puuv %>%
-  group_by(year, tag) %>% slice(1)
-
-onepertag %>% ggplot(aes(x=caps_per_life, y=traps_per_life)) +
-  geom_point()
-
-powmod <- lm(log(traps_per_life) ~ log(caps_per_life), data=onepertag)
-# summary(powmod) #check it
-# ln(y) = -0.001924 + 0.742403ln(x)
-# y = 0.9980778x^0.742403
-
-predicted.values <- predict(powmod, type="response")
-
-# #visualize it
+# ##########---------- LOAD NETWORK METRICS and VOLE CAPTURE METADATA -----------###########
+# 
+# # ### Fulltrap and netmets dfs created separately, load 2021 and 2022 data here, clean as needed
+# # 
+# # ### INDIVIDUAL VOLE METADATA by year
+# #     # >> FROM OTHER R PROJECT! << (hence why I'm not using 'here()')
+# # fulltrap21 <- readRDS(file="../vole-spatial-v2/fulltrap21_05.10.23.rds") #go up a level from current wd, then down to file
+# # fulltrap22 <- readRDS(file="../vole-spatial-v2/fulltrap22_05.10.23.rds") 
+# # 
+# # ###### THESE VERSIONS OF FULLTRAP do have all the animals (breeders and nonbreeders) 
+# # 
+# # ## >>NOTE<< overwintered animals may incorrectly have firstcap==1 in 2022
+# #     # PIT tag: 21895 Occ2Sess1 at Vaarinkorpi
+# #     # PIT tag: 226280 Occ2Sess2 at Kuoppa
+# # # FULLtrap <- rbind(fulltrap21, fulltrap22)
+# # # OW <- FULLtrap %>% 
+# # #   group_by(tag) %>% arrange(year, occ.sess, .by_group = TRUE) %>%
+# # #   filter(n_distinct(year) > 1)
+# # # write.csv(OW, here("overwinter21-22.csv"))
+# # 
+# # #join 21 and 22 fulltrap data; correct firstcap for 2022
+# # fulltrap21.22 <- rbind(fulltrap21, fulltrap22) %>%
+# #   group_by(tag) %>% arrange(tag, year, occ.sess, .by_group = TRUE) %>%
+# #   mutate(firstcap = ifelse(date_time == min(date_time), 1, 0)) %>%
+# #   mutate(firstcap = factor(firstcap)) %>%
+# # #remove may; keep one entry per tag,year,month; pull only relevant columns
+# #   filter(month!="may") %>% 
+# #   ungroup() %>% group_by(tag, year, month) %>%
+# #   slice(1) %>%
+# #   select(year, site, trt, month, tag, samp_id, sex, season_breeder, traps_per_life, caps_per_life) 
+# # 
+# # ### NETWORK METRICS - STSB version - breeders and nonbreeders!
+# # netmets21 <- readRDS(file="../vole-spatial-v2/netmets21_STSB.rds") %>%
+# #   mutate(year=as.numeric(2021))
+# # netmets22 <- readRDS(file="../vole-spatial-v2/netmets22_STSB.rds") %>%
+# #   mutate(year=as.numeric(2022))
+# # 
+# # netmets21.22 <- rbind(netmets21, netmets22)
+# # 
+# # ### NETWORK METRICS + METADATA
+# # 
+# # netmets_full <- left_join(netmets21.22, fulltrap21.22, by=c("year", "site", "month", "tag")) %>%
+# #   mutate(site=as.factor(site),
+# #          year=as.factor(year),
+# #          month = as.factor(month),
+# #          month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #remove may from factor levels
+# #   select(!c(focal_id)) %>% #remove duplicate column
+# #   relocate(c(year, trt, site, month, n.node, tag, samp_id, sex), .before = wt.deg)
+# # 
+# # saveRDS(netmets_full, here("netmets_full_06.08.23.rds"))
+# 
+# #load the most recent version of netmets_full
+# netmets_full <- readRDS(here("netmets_full_06.08.23.rds"))
+# 
+# 
+# 
+# 
+# # #visualize degree by month for trt and year
+# # netmets_full %>%
+# #   ggplot(aes(x=month, y=strength, fill=trt)) +
+# #   geom_violin() +
+# #   facet_wrap(~year, nrow=2)
+# 
+# 
+# #########################################   LOAD & CLEAN PUUV IFA DATA   ########################################
+# 
+# # #load, clean, format PUUV IFA data
+# # ### NEW! Updated! PUUV_IFA data with the goofy samples from 2021/2022 that KWearing re-ran in May 2023 (code updated 6.7.23)
+# # puuv_data <- read.csv(here("puuv_ifa_06.07.23.csv")) %>%
+# #   clean_names %>%
+# #   #populate column of FINAL PUUV status
+# #   #kind of a pain now, since samples could be run 1-4x but we want the result of the last run as the 'final' status
+# #   #columns are named as 'puuv_run1' 'puuv_run2' 'puuv_run3' 'puuv_run4'
+# #   mutate(FINAL_puuv = ifelse(!is.na(puuv_run4), as.character(puuv_run4), 
+# #                              ifelse(!is.na(puuv_run3), as.character(puuv_run3),
+# #                                     ifelse(!is.na(puuv_run2), as.character(puuv_run2), as.character(puuv_run1))))) %>%
+# #   mutate(samp_id = as.numeric(id),
+# #          # date_run1 = as_date(date_run1, format= "%m/%d/%Y"),
+# #          # puuv_run1 = as.factor(puuv_run1),
+# #          # date_run2 = as_date(date_run2, format= "%m/%d/%Y"),
+# #          # puuv_run2 = as.factor(puuv_run2),
+# #          # date_run3 = as_date(date_run3, format= "%m/%d/%Y"),
+# #          # puuv_run3 = as.factor(puuv_run3),
+# #          # date_run4 = as_date(date_run4, format= "%m/%d/%Y"),
+# #          # puuv_run4 = as.factor(puuv_run4),
+# #          FINAL_puuv = as.factor(FINAL_puuv)) %>%
+# #   drop_na(FINAL_puuv) %>%
+# #   dplyr::select(FINAL_puuv, samp_id) %>%
+# #   rename(puuv_ifa = FINAL_puuv)
+# # #output is a df with two columns, sample ID and PUUV status (0,1)
+# # 
+# # # Save puuv_data to a rdata file
+# # saveRDS(puuv_data, file = here("hantadata_06.07.23.rds"))
+# 
+# # Restore puuv_data from the rdata file
+# puuv_data <- readRDS(file = "hantadata_06.07.23.rds")
+# 
+# 
+# 
+# 
+# ##################################  COMBINE NETMETS data with PUUV data ######################################
+# 
+# #join puuv_data to netmets_full (BOTH YEARS!)
+# netmets_puuv <- left_join(netmets_full, puuv_data, by="samp_id") %>% 
+#   #left join on netmets_full because I need to have network data
+#   relocate(puuv_ifa, .after="samp_id") %>%
+#   select(!samp_id) %>% 
+#   drop_na(puuv_ifa) #drop any animals without puuv data
+# 
+# ########## TO DECIDE: KEEP THE ANIMALS WITH NO PUUV STATUS? they're only useful to plot, can't use for models
+# ## there are 121 animals that we have network data for but DO NOT know their PUUV status
+# 
+# 
+# ############ REMOVE THE VOLES from netmets_puuv THAT SEROCONVERT POS TO NEG ##################
+# 
+# #voles that seroconvert PUUV+ to PUUV-
+# puuv_pos_neg <- netmets_puuv %>% group_by(tag) %>% arrange(year, month, .by_group = TRUE) %>%
+#   dplyr::select(year, month, tag, puuv_ifa) %>%
+#   summarise(status_time = toString(puuv_ifa)) %>%
+#   filter(str_detect(status_time, "1,\\s0")) #filter for animals that go from pos to neg
+# #pull the PIT tags
+# problemchildren <- puuv_pos_neg$tag
+# #filter netmetsPUUV to remove 'problemchildren' - status is inconclusive or maybe we detected MatAb
+# netmets_puuv <- netmets_puuv %>%
+#   filter(!tag %in% problemchildren)
+# 
+# ## NOW NETMETS_PUUV has ONLY the animals that:  ##
+#     #       1. Have network data
+#     #       2. Have PUUV IFA data
+#     #       3. DON'T seroconvert from PUUV+ to PUUV-
+# ## NETMETS_PUUV has BREEDERS and NONBREEDERS as of June 8 2023
+# 
+# ######################### end problem children ################################
+# 
+# 
+# 
+# 
+# 
+# ###############################################################################
+# ### exploratoriness of breeders ###
+# ## based off of VanderWaal ground squirrel ms ##
+# #https://modelr.tidyverse.org/reference/add_predictions.html
+# 
+# #subset data to one entry per vole per year
+# onepertag <- netmets_puuv %>%
+#   group_by(year, tag) %>% slice(1)
+# 
+# #fit power model to ln(traps) ~ ln(caps)
+# powmod <- lm(log(traps_per_life) ~ log(caps_per_life), data=onepertag)
+# # summary(powmod) #check it
+# # # ln(y) = -0.01564 + 0.73605ln(x)
+# # # y = 0.9844817x^0.73605
+# 
+# # #yes, powmod is much better than linreg
+# # linmod <- lm(traps_per_life ~ caps_per_life, data=onepertag)
+# # summary(linmod)
+# # 
+# # AIC(linmod, powmod)
+# 
+# #estimate y-hat (predicted values)
+# predicted.values <- predict(powmod, type="response")
+# 
+# #visualize it - colors are observed, dotted line is predicted
 # ggplot(aes(x=log(caps_per_life), y=log(traps_per_life), color=sex), data=onepertag) +
 #   geom_jitter(alpha=0.5, size=1.5) +
 #   geom_line(aes(y=predicted.values), linetype=2, color="black") +
 #   labs(title="exploratoriness")
-
-d <- data.frame(onepertag$tag, onepertag$caps_per_life, onepertag$traps_per_life) %>% 
-  rename(caps_per_life = onepertag.caps_per_life,
-         traps_per_life = onepertag.traps_per_life,
-         tag = onepertag.tag)
-d <- d %>% modelr::add_predictions(powmod) %>%
-  mutate(pred_exp = exp(pred))
-onepertag_pred <- onepertag %>% left_join(d, by=c("tag", "caps_per_life", "traps_per_life")) %>%
-  mutate(explore = log(traps_per_life) - pred,
-         explore_exp = traps_per_life - pred_exp) #residual of obs traps_per_life - expected
-
-### EXPLORE is in terms of log(traps_per_life)  [ maybe this is scaled -1 to 1 because it's a ln? ]
-### EXPLORE_EXP is in terms of traps_per_life (so how many more/fewer traps were you in than expected)
-
-# #visualize
-# onepertag_pred %>%
-#   ggplot(aes(x=sex, y=explore, fill=sex)) +
-#   geom_violin() +
-#   geom_hline(yintercept = 0, color="black")
-
-# #yes, powmod is much better than linreg
-# linmod <- lm(traps_per_life ~ caps_per_life, data=onepertag)
-# summary(linmod)
 # 
-# AIC(linmod, powmod)
+# #dataframe of observed values
+# d <- data.frame(onepertag$tag, onepertag$caps_per_life, onepertag$traps_per_life) %>% 
+#   rename(caps_per_life = onepertag.caps_per_life,
+#          traps_per_life = onepertag.traps_per_life,
+#          tag = onepertag.tag)
+# #add predicted values from power model
+# d <- d %>% modelr::add_predictions(powmod) %>%
+#   mutate(pred_exp = exp(pred))
+# #calculate residuals (both log() and not-ln versions)
+# onepertag_pred <- onepertag %>% left_join(d, by=c("tag", "caps_per_life", "traps_per_life")) %>%
+#   mutate(explore = log(traps_per_life) - pred,
+#          explore_exp = traps_per_life - pred_exp) #residual of obs traps_per_life - expected
+# 
+# ### EXPLORE is in terms of log(traps_per_life)  [ maybe this is scaled -1 to 1 because it's a ln? ]
+# ### EXPLORE_EXP is in terms of traps_per_life (so how many more/fewer traps were you in than expected)
+# 
+# # #visualize
+# # onepertag_pred %>%
+# #   ggplot(aes(x=sex, y=explore, fill=sex)) +
+# #   geom_violin() +
+# #   geom_hline(yintercept = 0, color="black")
+# 
+# 
+# ############ WHAT UNITS SHOULD THE RESIDUALS BE IN ?? ########################
+# 
+# exploratory <- onepertag_pred %>% select(c("year", "tag", "explore"))
+# 
+# netmets_puuv <- netmets_puuv %>% left_join(exploratory, by=c("year", "tag"))
+# 
+# ############################################################################
+# 
+# 
+# 
+# 
+# 
+# # add previous (lagged) degree (degree from previous month influences current PUUV status)
+# # add 0,1 for serovert - animals that go 0-0 or 0-1 
+#     # BUT! the previous month has to be in the same year (don't want 2021 fall to influence 2022 spring)
+# netmets_puuv <- netmets_puuv %>% group_by(year, tag) %>%
+#   arrange(month, .by_group = TRUE) %>%
+#   mutate(#prev_wt.deg = lag(wt.deg, n=1),
+#          prev_strength = lag(strength, n=1),
+#          prev_F.deg = lag(F.deg, n=1),
+#          prev_M.deg = lag(M.deg, n=1),
+#          prev_b.deg = lag(b.deg, n=1),
+#          prev_nb.deg = lag(nb.deg, n=1),
+#          prev_n.node = lag(n.node, n=1),
+#          prev_month = lag(month, n=1)) %>%
+#   mutate(prev_curr_puuv = paste(lag(puuv_ifa), puuv_ifa, sep="-")) %>%
+#   mutate(serovert = as.factor(case_when(prev_curr_puuv == "0-0" ~ 0,
+#                                         prev_curr_puuv == "0-1" ~ 1,
+#                                         prev_curr_puuv == "1-1" ~ NA))) 
+#   # %>% select(!prev_curr_puuv)
+# 
+# 
+# #save all the above code to here
+# saveRDS(netmets_puuv, here("netmets_puuv_06.08.23.rds"))
 
-
-##### WHAT UNITS SHOULD THE RESIDUALS BE IN?? ########################
-
-exploratory <- onepertag_pred %>% select(c("year", "tag", "explore"))
-
-netmets_puuv <- netmets_puuv %>% left_join(exploratory, by=c("year", "tag"))
-
-############################################################################
-
-
-
-
-
-
-
-
-######################### end problem children ################################
-
-# #pull tag and sample ID
-# tag_id <- netmets_puuv %>% dplyr::select(tag, samp_id)
-
-
-# add previous (lagged) degree (degree from previous month influences current PUUV status)
-# add 0,1 for serovert - animals that go 0-0 or 0-1 
-    # BUT! the previous month has to be in the same year (don't want 2021 fall to influence 2022 spring)
-netmets_puuv <- netmets_puuv %>% group_by(year, tag) %>%
-  arrange(month, .by_group = TRUE) %>%
-  mutate(prev_wt.deg = lag(wt.deg, n=1),
-         prev_F.deg = lag(F.deg, n=1),
-         prev_M.deg = lag(M.deg, n=1),
-         prev_n.node = lag(n.node, n=1),
-         prev_month = lag(month, n=1)) %>%
-  mutate(prev_curr_puuv = paste(lag(puuv_ifa), puuv_ifa, sep="-")) %>%
-  mutate(serovert = as.factor(case_when(prev_curr_puuv == "0-0" ~ 0,
-                                        prev_curr_puuv == "0-1" ~ 1,
-                                        prev_curr_puuv == "1-1" ~ NA))) 
-  # %>% select(!prev_curr_puuv)
+#load netmets_puuv
+netmets_puuv <- readRDS(here("netmets_puuv_06.08.23.rds"))
 
 ##################################################################################################################
 
@@ -246,76 +254,75 @@ netmets_puuv <- netmets_puuv %>% group_by(year, tag) %>%
 
 
 
-############### PUUV PREVALENCE PER SITE #########################
-
-#what is the prevalence of hanta at each site in each month?
-puuv_prev <- netmets_puuv %>% group_by(year, site, month) %>%
-  summarise(n = length(tag),
-            n_pos = length(which(puuv_ifa == "1")),
-            prev = n_pos/n) %>%
-  mutate(site = factor(site, levels=c("asema", "helmipollo", "hevonen",
-                                      "ketunpesa", "kiirastuli", "mustikka",
-                                      "kuoppa", "radio", "vaarinkorpi",
-                                      "janakkala", "luostari", "puro", "talo")))
-
-#plot prevalence each month, looking for sites with multiple prev=0 in a row
-    #--> these should probably be removed for analysis
-puuv_prev %>%
-  ggplot() +
-  geom_point(aes(x=month, y=prev, color=prev==0)) +
-  scale_color_manual(name="prevalence = 0",
-                     values=setNames(c("red","black"),c(T,F)))+
-  facet_grid(vars(year), vars(site)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 
-### ERROR BARS based on sample size?
-## essentially something to show if it's 100% prev of 2 animals or 45 animals
 
-#https://www.rdocumentation.org/packages/epiR/versions/0.9-79/topics/epi.conf
-library(epiR)
-#Method prevalence require a two-column matrix; the first column specifies the number of positives, 
-    #the second column specifies the total number tested. 
-epi.conf.data <- puuv_prev %>% ungroup() %>% select(n_pos, n) %>% as.matrix()
-prevCI <- epi.conf(epi.conf.data, ctype="prevalence", method="exact", conf.level = 0.95)
-puuv_prev <- cbind(puuv_prev, prevCI)
-
-
-puuv_prev %>%
-  ggplot(aes(x=month, y=prev, color=prev==0)) +
-  geom_point() +
-  geom_errorbar(aes(y=est, ymin=lower, ymax=upper), width=.2, alpha=0.3) +
-  scale_color_manual(name="prevalence = 0",
-                     values=setNames(c("red","black"),c(T,F))) +
-  facet_grid(vars(year), vars(site)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-
-
-## visualize infected as a percentage of the total population
-
-puuv_prev_stack <- netmets_puuv %>% 
-  mutate(month.n = case_when(month=="june" ~ 6,
-                           month=="july" ~ 7,
-                           month=="aug" ~ 8,
-                           month=="sept" ~ 9,
-                           month=="oct" ~ 10),
-         month.n = as.numeric(month.n)) %>%
-  mutate(site = factor(site, levels=c("asema", "helmipollo", "hevonen",
-                                      "ketunpesa", "kiirastuli", "mustikka",
-                                      "kuoppa", "radio", "vaarinkorpi",
-                                      "janakkala", "luostari", "puro", "talo"))) %>%
-  group_by(year, site, month.n) %>%
-  summarise(n = length(tag),
-            n_pos = length(which(puuv_ifa == "1"))) %>%
-  pivot_longer(-c("year", "month.n", "site"), names_to = "group", values_to = "count")
-
-puuv_prev_stack %>%
-  ggplot(aes(x=month.n, y=count, fill=group)) +
-  geom_area() +
-  facet_grid(vars(year), vars(site))
-
-
-############################## end ####################################
+# ############### PUUV PREVALENCE PER SITE #########################
+# 
+# #what is the prevalence of hanta at each site in each month?
+# puuv_prev <- netmets_puuv %>% group_by(year, site, month) %>%
+#   summarise(n = length(tag),
+#             n_pos = length(which(puuv_ifa == "1")),
+#             prev = n_pos/n) %>%
+#   mutate(site = factor(site, levels=c("asema", "helmipollo", "hevonen",
+#                                       "ketunpesa", "kiirastuli", "mustikka",
+#                                       "kuoppa", "radio", "vaarinkorpi",
+#                                       "janakkala", "luostari", "puro", "talo")))
+# 
+# # #plot prevalence each month, looking for sites with multiple prev=0 in a row
+# #     #--> these should probably be removed for analysis
+# # puuv_prev %>%
+# #   ggplot() +
+# #   geom_point(aes(x=month, y=prev, color=prev==0)) +
+# #   scale_color_manual(name="prevalence = 0",
+# #                      values=setNames(c("red","black"),c(T,F)))+
+# #   facet_grid(vars(year), vars(site)) +
+# #   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+# 
+# ### ERROR BARS based on sample size
+# ## essentially something to show if it's 100% prev of 2 animals or 45 animals
+# #https://www.rdocumentation.org/packages/epiR/versions/0.9-79/topics/epi.conf
+# library(epiR)
+# #Method prevalence require a two-column matrix; the first column specifies the number of positives, 
+#     #the second column specifies the total number tested. 
+# epi.conf.data <- puuv_prev %>% ungroup() %>% select(n_pos, n) %>% as.matrix()
+# prevCI <- epi.conf(epi.conf.data, ctype="prevalence", method="exact", conf.level = 0.95)
+# puuv_prev <- cbind(puuv_prev, prevCI)
+# 
+# #plot prevalence each month with error bars
+# puuv_prev %>%
+#   ggplot(aes(x=month, y=prev, color=prev==0)) +
+#   geom_point() +
+#   geom_errorbar(aes(y=est, ymin=lower, ymax=upper), width=.2, alpha=0.3) +
+#   scale_color_manual(name="prevalence = 0",
+#                      values=setNames(c("red","black"),c(T,F))) +
+#   facet_grid(vars(year), vars(site)) +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+# 
+# 
+# ## visualize infected as a percentage of the total population
+# puuv_prev_stack <- netmets_puuv %>% 
+#   mutate(month.n = case_when(month=="june" ~ 6,
+#                            month=="july" ~ 7,
+#                            month=="aug" ~ 8,
+#                            month=="sept" ~ 9,
+#                            month=="oct" ~ 10),
+#          month.n = as.numeric(month.n)) %>%
+#   mutate(site = factor(site, levels=c("asema", "helmipollo", "hevonen",
+#                                       "ketunpesa", "kiirastuli", "mustikka",
+#                                       "kuoppa", "radio", "vaarinkorpi",
+#                                       "janakkala", "luostari", "puro", "talo"))) %>%
+#   group_by(year, site, month.n) %>%
+#   summarise(n = length(tag),
+#             n_pos = length(which(puuv_ifa == "1"))) %>%
+#   pivot_longer(-c("year", "month.n", "site"), names_to = "group", values_to = "count")
+# 
+# puuv_prev_stack %>%
+#   ggplot(aes(x=month.n, y=count, fill=group)) +
+#   geom_area() +
+#   facet_grid(vars(year), vars(site))
+# 
+# ############################## end prevalence ####################################
 
 
 
@@ -347,7 +354,7 @@ puuv_prev_stack %>%
 #   xlim(0,4) + ylim(0,4) +
 #   facet_grid(year ~ month)
 # 
-# ######## the right angle shape is curious to me, and the fact that 
+# ######## the right angle shape is curious to me, and the fact that
 #   #males go vertically and females horizontally
 #   #I don't know if this is an artifact or something cool
 #   #I also can't wrap my head around what it means... more on this?
@@ -363,10 +370,16 @@ puuv_prev_stack %>%
 # 
 # dat <- netmets_puuv
 # 
-# mod <- glmer(puuv_ifa ~ wt.deg + sex + trt + month + n.node + year + (1|site),
+# ######### so whatever wt.deg is actually measuring.... it is VERY correlated with current infection status... :|
+# mod <- glmer(puuv_ifa ~ wt.deg + sex + season_breeder + trt + month + n.node + year + (1|site),
 #              family=binomial, data=dat)
 # 
-# mod <- glmer(puuv_ifa ~ F.deg:sex + M.deg:sex + sex + trt + month + n.node + year + (1|site),
+# ########## but strength is not
+# mod <- glmer(puuv_ifa ~ strength + sex + season_breeder + trt + month + n.node + year + (1|site),
+#              family=binomial, data=dat)
+# 
+# ######## F.deg and M.deg don't matter either
+# mod <- glmer(puuv_ifa ~ F.deg:sex + M.deg:sex + sex + season_breeder + trt + month + n.node + year + (1|site),
 #              family=binomial, data=dat)
 # #WARNING: Failed to converge
 #     ## BEN BOLKER says it's okay, the bobyqa ("Bound Optimization BY Quadratic Approximation") isn't actually doing anything
@@ -653,7 +666,7 @@ dev.off()
 
 
 #likelihood of seroconverting based on previous network position
-mod <- glm(serovert ~ prev_M.deg:sex + prev_F.deg:sex + sex + explore + 
+mod <- glm(serovert ~ prev_M.deg:sex + prev_F.deg:sex + sex + season_breeder + explore + 
              trt + prev_month + prev_n.node + year,
              family=binomial, data=netmets_puuv_serov)
 #SINGULARITY IS AN ISSUE to do glmer (1|site) - some sites 0 or 1 seroverter
@@ -661,6 +674,17 @@ summary(mod)
 #previous degree only affects p|serovert for females:
     #more likely to serovert if female with high female degree
     #less likely to serovert if female with high male degree (... um what)
+
+
+mod <- glm(serovert ~ prev_M.deg:sex:season_breeder + prev_F.deg:sex:season_breeder + sex + season_breeder + explore + 
+             trt + prev_month + prev_n.node + year,
+           family=binomial, data=netmets_puuv_serov)
+
+mod <- glm(serovert ~ prev_b.deg:sex + prev_nb.deg:sex + sex + season_breeder + explore + 
+             trt + prev_month + prev_n.node + year,
+           family=binomial, data=netmets_puuv_serov)
+summary(mod)
+
 
 mod %>% tbl_regression(exponentiate = TRUE,
                        pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
@@ -684,7 +708,7 @@ mod %>% tbl_regression(exponentiate = TRUE,
 ##########################################################################################################
 #How does previous degree affect current infection status?
 
-dat <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
+dat <- netmets_puuv %>% drop_na(prev_strength) %>%
   rename(Sex = sex,
          Treatment = trt,
          Previous_Month = prev_month,
@@ -728,18 +752,27 @@ dat <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
 #              family=binomial, data=dat_trt)
 
 
-mod <- glmer(puuv_ifa ~ Previous_M.degree:Sex + Previous_F.degree:Sex + Sex +
+############ IS THERE A WAY to have degree be SEX AND BREEDER specific? ie so overlapping with a malebreeder != malenonbreeder
+##### I mean, it's easy enough to make a sex-breeder column with 4 categories -- but does that make things more complicated in a model?
+
+
+mod_sex1 <- glmer(puuv_ifa ~ Previous_M.degree:Sex:season_breeder + Previous_F.degree:Sex:season_breeder + 
+               Sex + season_breeder + explore +
                Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+               control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
              family=binomial, data=dat)
 #WARNING: Failed to converge
-summary(mod)
+summary(mod_sex1)
 
-mod_exp <- glmer(puuv_ifa ~ Previous_M.degree:Sex + Previous_F.degree:Sex + Sex + explore +
-                Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
-              family=binomial, data=dat)
-summary(mod_exp)
+mod_breed <- glmer(puuv_ifa ~ prev_b.deg:Sex:season_breeder + prev_nb.deg:Sex:season_breeder + 
+               Sex + season_breeder + explore +
+               Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+             family=binomial, data=dat)
+summary(mod_breed)
 
-AIC(mod, mod_exp) #eeee the AIC is nearly 2 smaller without exploratoriness (suggests more complex model isn't better)
+
+AIC(mod_sex, mod_breed) ## breeder model has a lower AIC than sex model
+
 
 # #from here: https://rstudio-pubs-static.s3.amazonaws.com/33653_57fc7b8e5d484c909b615d8633c01d51.html
 #     #related: https://stats.stackexchange.com/questions/164457/r-glmer-warnings-model-fails-to-converge-model-is-nearly-unidentifiable
@@ -757,8 +790,7 @@ AIC(mod, mod_exp) #eeee the AIC is nearly 2 smaller without exploratoriness (sug
 # #3. Try a different optimizer - e.g. bobyqa for first AND second phase (default is 1st phase, Nelder-Mead 2nd phase)
 # #fixed with : adding "control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5))"
 
-mod1 <- glmer(puuv_ifa ~ Previous_M.degree:Sex + Previous_F.degree:Sex + Sex +
-               Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+mod1 <- glmer(puuv_ifa ~ MODEL_PARAMS_GO_HERE,
              control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
              family=binomial, data=dat)
 
@@ -783,12 +815,14 @@ summary(mod1)
 #GLMM model diagnostics > https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
 library(DHARMa)
 #calculate residuals (then run diagnostics on these)
-simulationOutput <- simulateResiduals(fittedModel = mod1)
+simulationOutput <- simulateResiduals(fittedModel = mod)
 plot(simulationOutput) #qq plot and residual vs fitted
 testDispersion(simulationOutput) #formal test for overdispersion
 # testZeroInflation(simulationOutput) #formal test for zero inflation (common type of overdispersion)
 
 plotResiduals(simulationOutput, dat$Sex)
+plotResiduals(simulationOutput, dat$season_breeder)
+plotResiduals(simulationOutput, dat$explore)
 plotResiduals(simulationOutput, dat$Treatment)
 plotResiduals(simulationOutput, dat$Month)
 plotResiduals(simulationOutput, dat$Previous_Network_Size)
