@@ -365,32 +365,35 @@ netmets_puuv <- readRDS(here("netmets_puuv_06.09.23.rds"))
 
 #########################################################################
 
-# #How does CURRENT degree affect infection status?
-# 
-# dat <- netmets_puuv
-# 
-# ######### so whatever wt.deg is actually measuring.... it is VERY correlated with current infection status... :|
-# mod <- glmer(puuv_ifa ~ wt.deg + sex + season_breeder + trt + month + n.node + year + (1|site),
-#              family=binomial, data=dat)
-# 
-# ########## but strength is not
-# mod <- glmer(puuv_ifa ~ strength + sex + season_breeder + trt + month + n.node + year + (1|site),
-#              family=binomial, data=dat)
-# 
-# ######## F.deg and M.deg don't matter either
-# mod <- glmer(puuv_ifa ~ F.deg:sex + M.deg:sex + sex + season_breeder + trt + month + n.node + year + (1|site),
-#              family=binomial, data=dat)
-# #WARNING: Failed to converge
-#     ## BEN BOLKER says it's okay, the bobyqa ("Bound Optimization BY Quadratic Approximation") isn't actually doing anything
-#     ## FALSE POSITIVE 'failed to converge'
-# 
-# #fixed with : adding "control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5))"
-# #https://stats.stackexchange.com/questions/164457/r-glmer-warnings-model-fails-to-converge-model-is-nearly-unidentifiable
-#     #also: https://www.learn-mlms.com/07-module-7.html#learning-objectives-5
-# 
-# summary(mod)
-# 
-# #RESULTS - Current network position does not correlate to infection status
+#How does CURRENT degree affect infection status?
+
+dat <- netmets_puuv
+
+#visualize infection status by weighted deg by sex,trt,year
+dat %>%
+  ggplot(aes(x=wt.deg, y=puuv_ifa, color=sex, group=sex)) +
+  geom_point() +
+  geom_smooth() +
+  facet_wrap(trt~year, ncol=2)
+
+#infected males have higher deg than infected? females sort of but not as strong
+mod <- glmer(puuv_ifa ~ wt.deg:sex + sex + season_breeder + explore + trt + month + n.node + year + (1|site),
+             family=binomial, data=dat)
+
+#infected animals have higher degree with same sex?
+mod <- glmer(puuv_ifa ~ F.deg:sex + M.deg:sex + sex + season_breeder + trt + month + n.node + year + (1|site),
+             family=binomial, data=dat)
+#WARNING: Failed to converge
+    ## BEN BOLKER says it's okay, the bobyqa ("Bound Optimization BY Quadratic Approximation") isn't actually doing anything
+    ## FALSE POSITIVE 'failed to converge'
+
+#fixed with : adding "control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5))"
+#https://stats.stackexchange.com/questions/164457/r-glmer-warnings-model-fails-to-converge-model-is-nearly-unidentifiable
+    #also: https://www.learn-mlms.com/07-module-7.html#learning-objectives-5
+
+summary(mod)
+
+#RESULTS - Current network position does not correlate to infection status
 
 #########################################################################
 
@@ -678,6 +681,7 @@ summary(mod)
 mod <- glm(serovert ~ prev_M.deg:sex:season_breeder + prev_F.deg:sex:season_breeder + sex + season_breeder + explore + 
              trt + prev_month + prev_n.node + year,
            family=binomial, data=netmets_puuv_serov)
+summary(mod)
 
 mod <- glm(serovert ~ prev_b.deg:sex + prev_nb.deg:sex + sex + season_breeder + explore + 
              trt + prev_month + prev_n.node + year,
@@ -707,7 +711,7 @@ mod %>% tbl_regression(exponentiate = TRUE,
 ##########################################################################################################
 #How does previous degree affect current infection status?
 
-dat <- netmets_puuv %>% drop_na(prev_strength) %>%
+dat <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
   rename(Sex = sex,
          Treatment = trt,
          Previous_Month = prev_month,
@@ -754,14 +758,22 @@ dat <- netmets_puuv %>% drop_na(prev_strength) %>%
 ############ IS THERE A WAY to have degree be SEX AND BREEDER specific? ie so overlapping with a malebreeder != malenonbreeder
 ##### I mean, it's easy enough to make a sex-breeder column with 4 categories -- but does that make things more complicated in a model?
 
+mod <- glmer(puuv_ifa ~ prev_wt.deg:Sex:season_breeder + 
+                    Sex + season_breeder + explore +
+                    Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+                  # control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                  family=binomial, data=dat)
+#WARNING: Failed to converge
+summary(mod)
 
-mod_sex1 <- glmer(puuv_ifa ~ Previous_M.degree:Sex:season_breeder + Previous_F.degree:Sex:season_breeder + 
+
+mod_sex <- glmer(puuv_ifa ~ Previous_M.degree:Sex:season_breeder + Previous_F.degree:Sex:season_breeder + 
                Sex + season_breeder + explore +
                Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
-               control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+               # control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=5e5)),
              family=binomial, data=dat)
 #WARNING: Failed to converge
-summary(mod_sex1)
+summary(mod_sex)
 
 mod_breed <- glmer(puuv_ifa ~ prev_b.deg:Sex:season_breeder + prev_nb.deg:Sex:season_breeder + 
                Sex + season_breeder + explore +
@@ -770,7 +782,7 @@ mod_breed <- glmer(puuv_ifa ~ prev_b.deg:Sex:season_breeder + prev_nb.deg:Sex:se
 summary(mod_breed)
 
 
-AIC(mod_sex, mod_breed) ## breeder model has a lower AIC than sex model
+AIC(mod, mod_sex, mod_breed) ## breeder model has a lower AIC than sex model
 
 
 # #from here: https://rstudio-pubs-static.s3.amazonaws.com/33653_57fc7b8e5d484c909b615d8633c01d51.html
@@ -814,7 +826,7 @@ summary(mod1)
 #GLMM model diagnostics > https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
 library(DHARMa)
 #calculate residuals (then run diagnostics on these)
-simulationOutput <- simulateResiduals(fittedModel = mod)
+simulationOutput <- simulateResiduals(fittedModel = mod_sex)
 plot(simulationOutput) #qq plot and residual vs fitted
 testDispersion(simulationOutput) #formal test for overdispersion
 # testZeroInflation(simulationOutput) #formal test for zero inflation (common type of overdispersion)
