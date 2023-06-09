@@ -14,7 +14,7 @@ library(lme4)
 rm(list = ls())
 
 
-#### all the steps to generate 'netmets_puuv' have been commented out as of 06.08.23 - readRDS to load file
+#### all the steps to generate 'netmets_puuv' have been commented out as of 06.09.23 (post sex.deg debug) - readRDS to load file
 
 # ##########---------- LOAD NETWORK METRICS and VOLE CAPTURE METADATA -----------###########
 # 
@@ -23,15 +23,15 @@ rm(list = ls())
 # # ### INDIVIDUAL VOLE METADATA by year
 # #     # >> FROM OTHER R PROJECT! << (hence why I'm not using 'here()')
 # # fulltrap21 <- readRDS(file="../vole-spatial-v2/fulltrap21_05.10.23.rds") #go up a level from current wd, then down to file
-# # fulltrap22 <- readRDS(file="../vole-spatial-v2/fulltrap22_05.10.23.rds") 
+# # fulltrap22 <- readRDS(file="../vole-spatial-v2/fulltrap22_05.10.23.rds")
 # # 
-# # ###### THESE VERSIONS OF FULLTRAP do have all the animals (breeders and nonbreeders) 
+# # ###### THESE VERSIONS OF FULLTRAP have all the animals (breeders and nonbreeders)
 # # 
 # # ## >>NOTE<< overwintered animals may incorrectly have firstcap==1 in 2022
 # #     # PIT tag: 21895 Occ2Sess1 at Vaarinkorpi
 # #     # PIT tag: 226280 Occ2Sess2 at Kuoppa
 # # # FULLtrap <- rbind(fulltrap21, fulltrap22)
-# # # OW <- FULLtrap %>% 
+# # # OW <- FULLtrap %>%
 # # #   group_by(tag) %>% arrange(year, occ.sess, .by_group = TRUE) %>%
 # # #   filter(n_distinct(year) > 1)
 # # # write.csv(OW, here("overwinter21-22.csv"))
@@ -42,10 +42,10 @@ rm(list = ls())
 # #   mutate(firstcap = ifelse(date_time == min(date_time), 1, 0)) %>%
 # #   mutate(firstcap = factor(firstcap)) %>%
 # # #remove may; keep one entry per tag,year,month; pull only relevant columns
-# #   filter(month!="may") %>% 
+# #   filter(month!="may") %>%
 # #   ungroup() %>% group_by(tag, year, month) %>%
 # #   slice(1) %>%
-# #   select(year, site, trt, month, tag, samp_id, sex, season_breeder, traps_per_life, caps_per_life) 
+# #   select(year, site, trt, month, tag, samp_id, sex, season_breeder, traps_per_life, caps_per_life)
 # # 
 # # ### NETWORK METRICS - STSB version - breeders and nonbreeders!
 # # netmets21 <- readRDS(file="../vole-spatial-v2/netmets21_STSB.rds") %>%
@@ -65,10 +65,10 @@ rm(list = ls())
 # #   select(!c(focal_id)) %>% #remove duplicate column
 # #   relocate(c(year, trt, site, month, n.node, tag, samp_id, sex), .before = wt.deg)
 # # 
-# # saveRDS(netmets_full, here("netmets_full_06.08.23.rds"))
+# # saveRDS(netmets_full, here("netmets_full_06.09.23.rds"))
 # 
 # #load the most recent version of netmets_full
-# netmets_full <- readRDS(here("netmets_full_06.08.23.rds"))
+# netmets_full <- readRDS(here("netmets_full_06.09.23.rds"))
 # 
 # 
 # 
@@ -89,7 +89,7 @@ rm(list = ls())
 # #   #populate column of FINAL PUUV status
 # #   #kind of a pain now, since samples could be run 1-4x but we want the result of the last run as the 'final' status
 # #   #columns are named as 'puuv_run1' 'puuv_run2' 'puuv_run3' 'puuv_run4'
-# #   mutate(FINAL_puuv = ifelse(!is.na(puuv_run4), as.character(puuv_run4), 
+# #   mutate(FINAL_puuv = ifelse(!is.na(puuv_run4), as.character(puuv_run4),
 # #                              ifelse(!is.na(puuv_run3), as.character(puuv_run3),
 # #                                     ifelse(!is.na(puuv_run2), as.character(puuv_run2), as.character(puuv_run1))))) %>%
 # #   mutate(samp_id = as.numeric(id),
@@ -108,10 +108,10 @@ rm(list = ls())
 # # #output is a df with two columns, sample ID and PUUV status (0,1)
 # # 
 # # # Save puuv_data to a rdata file
-# # saveRDS(puuv_data, file = here("hantadata_06.07.23.rds"))
+# # saveRDS(puuv_data, file = here("hantadata_06.09.23.rds"))
 # 
 # # Restore puuv_data from the rdata file
-# puuv_data <- readRDS(file = "hantadata_06.07.23.rds")
+# puuv_data <- readRDS(file = "hantadata_06.09.23.rds")
 # 
 # 
 # 
@@ -119,10 +119,10 @@ rm(list = ls())
 # ##################################  COMBINE NETMETS data with PUUV data ######################################
 # 
 # #join puuv_data to netmets_full (BOTH YEARS!)
-# netmets_puuv <- left_join(netmets_full, puuv_data, by="samp_id") %>% 
+# netmets_puuv <- left_join(netmets_full, puuv_data, by="samp_id") %>%
 #   #left join on netmets_full because I need to have network data
 #   relocate(puuv_ifa, .after="samp_id") %>%
-#   select(!samp_id) %>% 
+#   select(!samp_id) %>%
 #   drop_na(puuv_ifa) #drop any animals without puuv data
 # 
 # ########## TO DECIDE: KEEP THE ANIMALS WITH NO PUUV STATUS? they're only useful to plot, can't use for models
@@ -136,7 +136,7 @@ rm(list = ls())
 #   dplyr::select(year, month, tag, puuv_ifa) %>%
 #   summarise(status_time = toString(puuv_ifa)) %>%
 #   filter(str_detect(status_time, "1,\\s0")) #filter for animals that go from pos to neg
-# #pull the PIT tags
+# #pull the PIT tags (21 individuals, mostly 1-0, a few 1-0-1)
 # problemchildren <- puuv_pos_neg$tag
 # #filter netmetsPUUV to remove 'problemchildren' - status is inconclusive or maybe we detected MatAb
 # netmets_puuv <- netmets_puuv %>%
@@ -172,7 +172,7 @@ rm(list = ls())
 # # #yes, powmod is much better than linreg
 # # linmod <- lm(traps_per_life ~ caps_per_life, data=onepertag)
 # # summary(linmod)
-# # 
+# #
 # # AIC(linmod, powmod)
 # 
 # #estimate y-hat (predicted values)
@@ -185,7 +185,7 @@ rm(list = ls())
 #   labs(title="exploratoriness")
 # 
 # #dataframe of observed values
-# d <- data.frame(onepertag$tag, onepertag$caps_per_life, onepertag$traps_per_life) %>% 
+# d <- data.frame(onepertag$tag, onepertag$caps_per_life, onepertag$traps_per_life) %>%
 #   rename(caps_per_life = onepertag.caps_per_life,
 #          traps_per_life = onepertag.traps_per_life,
 #          tag = onepertag.tag)
@@ -220,12 +220,11 @@ rm(list = ls())
 # 
 # 
 # # add previous (lagged) degree (degree from previous month influences current PUUV status)
-# # add 0,1 for serovert - animals that go 0-0 or 0-1 
+# # add 0,1 for serovert - animals that go 0-0 or 0-1
 #     # BUT! the previous month has to be in the same year (don't want 2021 fall to influence 2022 spring)
 # netmets_puuv <- netmets_puuv %>% group_by(year, tag) %>%
 #   arrange(month, .by_group = TRUE) %>%
-#   mutate(#prev_wt.deg = lag(wt.deg, n=1),
-#          prev_strength = lag(strength, n=1),
+#   mutate(prev_wt.deg = lag(wt.deg, n=1),
 #          prev_F.deg = lag(F.deg, n=1),
 #          prev_M.deg = lag(M.deg, n=1),
 #          prev_b.deg = lag(b.deg, n=1),
@@ -235,15 +234,15 @@ rm(list = ls())
 #   mutate(prev_curr_puuv = paste(lag(puuv_ifa), puuv_ifa, sep="-")) %>%
 #   mutate(serovert = as.factor(case_when(prev_curr_puuv == "0-0" ~ 0,
 #                                         prev_curr_puuv == "0-1" ~ 1,
-#                                         prev_curr_puuv == "1-1" ~ NA))) 
+#                                         prev_curr_puuv == "1-1" ~ NA)))
 #   # %>% select(!prev_curr_puuv)
 # 
 # 
 # #save all the above code to here
-# saveRDS(netmets_puuv, here("netmets_puuv_06.08.23.rds"))
+# saveRDS(netmets_puuv, here("netmets_puuv_06.09.23.rds"))
 
 #load netmets_puuv
-netmets_puuv <- readRDS(here("netmets_puuv_06.08.23.rds"))
+netmets_puuv <- readRDS(here("netmets_puuv_06.09.23.rds"))
 
 ##################################################################################################################
 
