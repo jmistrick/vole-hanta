@@ -327,49 +327,16 @@ netmets_puuv <- readRDS(here("netmets_puuv_06.09.23.rds"))
 
 
 
-# #visualize M.deg and F.deg for males and females in each trt
-# 
-# netmets_puuv %>%
-#   ggplot(aes(x=trt, y=F.deg, color=sex)) +
-#   geom_violin() +
-#   facet_grid(year ~ month)
-# 
-# netmets_puuv %>%
-#   ggplot(aes(x=trt, y=M.deg, fill=sex)) +
-#   geom_boxplot() +
-#   facet_grid(year ~ month)
-# 
-# netmets_puuv %>%
-#   ggplot(aes(x=trt, y=wt.deg, fill=sex)) +
-#   geom_boxplot() +
-#   facet_grid(year ~ month)
-# 
-# ## COMPARE female and male degree of a given animal
-# netmets_puuv %>%
-#   ggplot(aes(x=F.deg, y=M.deg, color=trt, )) +
-#   geom_point(aes(shape=sex)) +
-#   scale_shape_manual(values=c(3, 16)) +
-#   coord_fixed() +
-#   xlim(0,4) + ylim(0,4) +
-#   facet_grid(year ~ month)
 
 
 
 
 
 
-#########################################################################
 
-#How does CURRENT degree affect CURRENT infection status?
+######################How does CURRENT degree affect CURRENT infection status?################################
 
 dat <- netmets_puuv
-
-#visualize infection status by weighted deg by sex,trt,year
-dat %>%
-  ggplot(aes(x=wt.deg, y=puuv_ifa, color=sex, group=sex)) +
-  geom_point() +
-  geom_smooth() +
-  facet_wrap(trt~year, ncol=2)
 
 #infected males have higher deg than infected? females similar effect size, not as significant
 mod <- glmer(puuv_ifa ~ wt.deg:sex + sex + season_breeder + explore + trt + month + n.node + year + (1|site),
@@ -390,9 +357,17 @@ summary(mod)
     #also: https://www.learn-mlms.com/07-module-7.html#learning-objectives-5
 
 
-#RESULTS - Current infection does seem to make animals have higher degree (more apparent for males than females)
+#RESULTS - Current infection maybe correlates with higher degree (more apparent for males than females)
 
-#########################################################################
+
+# #visualize infection status by weighted deg by sex,trt,year
+# dat %>%
+#   ggplot(aes(x=wt.deg, y=puuv_ifa, color=sex, group=sex)) +
+#   geom_point() +
+#   geom_smooth() +
+#   facet_grid(trt~year)
+
+###############################end current degree, current infection################################
 
 
 
@@ -403,300 +378,62 @@ summary(mod)
 ## last month's degree, this month's PUUV status
 ## grouped by year and treatment (so replicate sites are combined)
 netmets_puuv_serov <- netmets_puuv %>%
-  # unite(yr_trt, year, trt, remove=FALSE) %>%
-  # ungroup() %>% group_by(yr_trt) %>%
   drop_na(serovert)
 
 # #summarize number of 0-0 vs number of 0-1 by year_trt
-# netmets_puuv_serov %>% group_by(yr_trt) %>%
-#   summarise(n_0 = sum(serovert=="0"),
-#             n_1 = sum(serovert=="1"))
+# netmets_puuv_serov %>% 
+#   unite(yr_trt, year, trt, remove=FALSE) %>%
+#   ungroup() %>% group_by(yr_trt) %>%
+#   summarise(n_00 = sum(serovert=="0"),
+#             n_01 = sum(serovert=="1"))
+# ## RESULT: There are A LOT MORE animals that don't seroconvert, than those that do
+# ## can the model / analysis even be fair/reasonable if we're comparing two things that are so off-weight?
 
-## RESULT: There are A LOT MORE animals that don't seroconvert, than those that do
-## can the model / analysis even be fair/reasonable if we're comparing two things that are so off-weight?
-
-
+# ## GGally to see a matrix of histograms / boxplots of variables by each other
+# ## just to get a sense of trends / distributions / check for weirdness
 # library(GGally)
-# 
-# data <- netmets_puuv_serov %>% ungroup() %>% select(!c(avg.wt.deg, wt.deg,
-#                                                        puuv_ifa, tag))
+# data <- netmets_puuv_serov %>% ungroup() %>% select(c(wt.deg, puuv_ifa, month, trt, year))
 # ggpairs(data)
 
 
-# #previous wt.deg of males/females that serovert vs those that don't
-# library(gridExtra)
-# 
-# wt <- netmets_puuv_serov %>%
-#   ggplot(aes(x=sex, y=prev_wt.deg, color=serovert)) +
-#   geom_violin() +
-#   facet_grid(trt ~ year)
-# 
-# female <- netmets_puuv_serov %>%
-#   ggplot(aes(x=sex, y=prev_F.deg, fill=serovert)) +
-#   geom_violin() +
-#   facet_grid(trt ~ year)
-# 
-# male <- netmets_puuv_serov %>%
-#   ggplot(aes(x=sex, y=prev_M.deg, fill=serovert)) +
-#   geom_violin() +
-#   facet_grid(trt ~ year)
-# 
-# grid.arrange(female, male, ncol=2)
-
-
-library(kableExtra)
-
-#number pos and neg by year=2021, treatment, sex
-netmets_puuv %>% drop_na(prev_wt.deg) %>% 
-  filter(year=="2021") %>%
-  mutate(trt = case_when(trt=="unfed_control" ~ "Unfed-Control",
-                         trt=="unfed_deworm" ~ "Unfed-Deworm",
-                         trt=="fed_control" ~"Fed-Control",
-                         trt=="fed_deworm" ~ "Fed-Deworm"),
-         trt = factor(trt, levels=c("Unfed-Control", "Unfed-Deworm",
-                                    "Fed-Control", "Fed-Deworm"))) %>%
-  group_by(year, trt, sex, puuv_ifa) %>%
-  summarise(n = length(tag)) %>%
-  pivot_wider(id_cols = c(year, trt, sex), values_from = n, names_from = puuv_ifa) %>%
-  kbl(col.names = c("Year", "Treatment", "Sex", "N Negative", "N Positive"), align = "lllcc") %>%
-  kable_styling(full_width=FALSE,
-                bootstrap_options = "striped") %>%
-  row_spec(0, bold=T, color="black", background="#DAD7D7")
-
-#number pos and neg by year=2022, treatment, sex
-netmets_puuv %>% drop_na(prev_wt.deg) %>% 
-  filter(year=="2022") %>%
-  mutate(trt = case_when(trt=="unfed_control" ~ "Unfed-Control",
-                         trt=="unfed_deworm" ~ "Unfed-Deworm",
-                         trt=="fed_control" ~"Fed-Control",
-                         trt=="fed_deworm" ~ "Fed-Deworm"),
-         trt = factor(trt, levels=c("Unfed-Control", "Unfed-Deworm",
-                                    "Fed-Control", "Fed-Deworm"))) %>%
-  group_by(year, trt, sex, puuv_ifa) %>%
-  summarise(n = length(tag)) %>%
-  pivot_wider(id_cols = c(year, trt, sex), values_from = n, names_from = puuv_ifa) %>%
-  kbl(col.names = c("Year", "Treatment", "Sex", "N Negative", "N Positive"), align = "lllcc") %>%
-  kable_styling(full_width=FALSE,
-                bootstrap_options = "striped") %>%
-  row_spec(0, bold=T, color="black", background="#DAD7D7")
-
-
-data <- netmets_puuv %>% drop_na(prev_wt.deg) %>% 
-  mutate(trt = case_when(trt=="unfed_control" ~ "Unfed-Control",
-                         trt=="unfed_deworm" ~ "Unfed-Deworm",
-                         trt=="fed_control" ~ "Fed-Control",
-                         trt=="fed_deworm" ~ "Fed-Deworm"),
-         trt = factor(trt, levels=c("Unfed-Control", "Unfed-Deworm",
-                                    "Fed-Control", "Fed-Deworm"))) %>%
-  group_by(year, trt, sex, puuv_ifa) %>%
-  summarise(n = length(tag)) %>% ungroup() 
-
-# png(here("n_puuv_breeders.png"), width=800, height=600)
-# data %>%
-#   ggplot(aes(x=sex, y=trt, size=n, color = puuv_ifa)) +
-#   scale_size(range=c(2, 36), name = "N Voles") +
-#   geom_point(alpha=0.5) +
-#   scale_y_discrete(limits=rev) +
-#   facet_wrap(~year) +
-#   labs(x="Sex", color = "PUUV Serostatus", title="Count of Infected/Uninfected Voles") +
-#   theme(axis.title.y = element_blank(),
-#         axis.title.x =  element_text(size=20),
-#         axis.text = element_text(size=16),
-#         strip.text = element_text(size=18),
-#         legend.text = element_text(size=14),
-#         legend.title = element_text(size=15),
-#         legend.position = "bottom")
-# dev.off()
-
-
-
-# data %>%
-#   ggplot(aes(x=puuv_ifa, y=trt, size=n, color = puuv_ifa)) +
-#   scale_size(range=c(2, 36), name = "N Voles") +
-#   geom_point(alpha=0.5) +
-#   scale_y_discrete(limits=rev) +
-#   facet_grid(sex~year) +
-#   labs(x="Sex", color = "PUUV Serostatus", title="Count of Infected/Uninfected Voles") +
-#   theme(axis.title.y = element_blank(),
-#         axis.title.x =  element_text(size=20),
-#         axis.text = element_text(size=16),
-#         strip.text = element_text(size=18),
-#         legend.text = element_text(size=14),
-#         legend.title = element_text(size=15),
-#         legend.position = "bottom")
-
-png(here("n_puuv_breeders_bar.png"), width=700, height=800)
-p <- data %>%
-ggplot(aes(fill=puuv_ifa, y=n, x=sex)) + 
-  geom_bar(position="stack", stat="identity") +
-  scale_fill_manual(values=c("#F2AD00", "#B40F20")) +
-  facet_grid(trt~year) +
-  labs(x="Sex", y="N Voles", fill = "PUUV Serostatus") +
-  theme(axis.title.y = element_blank(),
-        axis.title.x =  element_text(size=20),
-        axis.text = element_text(size=12),
-        strip.text.x = element_text(size=16),
-        strip.text.y = element_text(size=14),
-        legend.text = element_text(size=14),
-        legend.title = element_text(size=15),
-        legend.position = "bottom")
-#to color the facet labels (it's a whole thing...)
-    #https://github.com/tidyverse/ggplot2/issues/2096
-g <- ggplot_gtable(ggplot_build(p))
-strip_r <- which(grepl('strip-r', g$layout$name))
-fills <- c("#B2DF8A", "#33A02C", "#CAB2D6", "#6A3D9A")
-k <- 1
-for (i in strip_r) {
-  j <- which(grepl('rect', g$grobs[[i]]$grobs[[1]]$childrenOrder))
-  g$grobs[[i]]$grobs[[1]]$children[[j]]$gp$fill <- fills[k]
-  k <- k+1
-}
-plot(g)
-dev.off()
-
-
-
-
-
-
-
-## current infection status based on previous degree
-trt_labs <- as_labeller(c("unfed_control" = "Unfed Control",
-                         "unfed_deworm" = "Unfed Deworm",
-                          "fed_control" = "Fed Control",
-                          "fed_deworm" = "Fed Deworm"))
-
-# wt <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
-#   ggplot(aes(x=sex, y=prev_wt.deg, fill=puuv_ifa, color=puuv_ifa)) +
-#   geom_violin() +
-#   facet_grid(trt ~ year)
-
-library(ggbeeswarm)
-
-p <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
-  ggplot(aes(x=sex, y=prev_F.deg, fill=puuv_ifa)) +
-  geom_boxplot() +
-  geom_beeswarm(dodge.width=0.8, alpha=0.5) +
-  # this plots the violin-style point distribution. groupOnX is not really necessary here, 
-  # but throws a warning if not included (this bit from Matt Michalska-Smith)
-  geom_quasirandom(dodge.width=0.8, groupOnX=TRUE, show.legend=FALSE, alpha=0.5) +
-  scale_fill_manual(values=c("#F2AD00", "#B40F20")) +
-  scale_color_manual(values=c("#F2AD00", "#B40F20")) +
-  facet_grid(year ~ trt, 
-             labeller = labeller(trt = trt_labs)) +
-  labs(title="Prior Month Female Network Degree", x="Sex") +
-  theme(plot.title = element_text(size= 24, hjust = 0.5),
-        legend.position = "none",
-        strip.text = element_text(size=20),
-        axis.text.x = element_text(size=18),
-        axis.title.x = element_text(size=20),
-        axis.title.y = element_blank(),
-        plot.margin = unit(c(1,0.5,1,1), "cm"))
-gf <- ggplot_gtable(ggplot_build(p))
-strip_t <- which(grepl('strip-t', gf$layout$name))
-fills <- c("#B2DF8A", "#33A02C", "#CAB2D6", "#6A3D9A")
-k <- 1
-for (i in strip_t) {
-  j <- which(grepl('rect', gf$grobs[[i]]$grobs[[1]]$childrenOrder))
-  gf$grobs[[i]]$grobs[[1]]$children[[j]]$gp$fill <- fills[k]
-  k <- k+1
-}
-plot(gf)
-
-p <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
-  ggplot(aes(x=sex, y=prev_M.deg, fill=puuv_ifa)) +
-  geom_boxplot() +
-  geom_beeswarm(dodge.width=0.8, alpha=0.4) +
-  # this plots the violin-style point distribution. groupOnX is not really necessary here, 
-  # but throws a warning if not included (this bit from Matt Michalska-Smith)
-  geom_quasirandom(dodge.width=0.8, groupOnX=TRUE, show.legend=FALSE, alpha=0.4) +
-  scale_fill_manual(values=c("#F2AD00", "#B40F20")) +
-  scale_color_manual(values=c("#F2AD00", "#B40F20")) +
-  facet_grid(year ~ trt, 
-             labeller = labeller(trt = trt_labs)) +
-  labs(title="Prior Month Male Network Degree", x="Sex", fill="PUUV Serostatus") +
-  theme(plot.title = element_text(size= 24, hjust = 0.5),
-        legend.position = "none",
-        strip.text = element_text(size=20),
-        axis.text.x = element_text(size=18),
-        axis.title.x = element_text(size=20),
-        axis.title.y = element_blank(),
-        plot.margin = unit(c(1,1,1,0.5), "cm"))
-gm <- ggplot_gtable(ggplot_build(p))
-strip_t <- which(grepl('strip-t', gm$layout$name))
-fills <- c("#B2DF8A", "#33A02C", "#CAB2D6", "#6A3D9A")
-k <- 1
-for (i in strip_t) {
-  j <- which(grepl('rect', gm$grobs[[i]]$grobs[[1]]$childrenOrder))
-  gm$grobs[[i]]$grobs[[1]]$children[[j]]$gp$fill <- fills[k]
-  k <- k+1
-}
-plot(gm)
-
-
-library(cowplot)
-
-png(here("malefemale_prevdeg.png"), width=1400, height=600)
-plot_grid(gf, gm, labels="AUTO", label_size = 30)
-dev.off()
-
-
-# ### Current network position and infection status
-# 
-# wt <- netmets_puuv_serov %>%
-#   ggplot(aes(x=sex, y=wt.deg, color=puuv_ifa)) +
-#   geom_violin() +
-#   facet_grid(trt ~ year)
-# 
-# female <- netmets_puuv_serov %>%
-#   ggplot(aes(x=sex, y=F.deg, color=puuv_ifa)) +
-#   geom_violin() +
-#   facet_grid(trt ~ year)
-# 
-# male <- netmets_puuv_serov %>%
-#   ggplot(aes(x=sex, y=M.deg, color=puuv_ifa)) +
-#   geom_violin() +
-#   facet_grid(trt ~ year)
-# 
-# grid.arrange(wt, female, male, ncol=3)
-
-
-
-
-
 #likelihood of seroconverting based on previous network position
-mod <- glm(serovert ~ prev_M.deg:sex + prev_F.deg:sex + sex + season_breeder + explore + 
+#SINGULARITY IS AN ISSUE to do glmer (1|site) - some sites 0 or 1 seroverter
+#running just glm's - NO RANDOM EFFECTS - as a result 
+
+mod_sex <- glm(serovert ~ prev_M.deg:sex + prev_F.deg:sex + 
+             sex + season_breeder + explore + 
              trt + prev_month + prev_n.node + year,
              family=binomial, data=netmets_puuv_serov)
-#SINGULARITY IS AN ISSUE to do glmer (1|site) - some sites 0 or 1 seroverter
-summary(mod)
-#previous degree only affects p|serovert for females:
-    #more likely to serovert if female with high female degree
-    #less likely to serovert if female with high male degree (... um what)
+summary(mod_sex)
 
-
-mod <- glm(serovert ~ prev_M.deg:sex:season_breeder + prev_F.deg:sex:season_breeder + sex + season_breeder + explore + 
+mod_sexb <- glm(serovert ~ prev_M.deg:sex:season_breeder + prev_F.deg:sex:season_breeder + 
+             sex + season_breeder + explore + 
              trt + prev_month + prev_n.node + year,
            family=binomial, data=netmets_puuv_serov)
-summary(mod)
+summary(mod_sexb)
 
-mod <- glm(serovert ~ prev_b.deg:sex + prev_nb.deg:sex + sex + season_breeder + explore + 
-             trt + prev_month + prev_n.node + year,
-           family=binomial, data=netmets_puuv_serov)
-summary(mod)
+mod_breed <- glm(serovert ~ prev_b.deg:sex + prev_nb.deg:sex + 
+                   sex + season_breeder + explore + 
+                   trt + prev_month + prev_n.node + year,
+                 family=binomial, data=netmets_puuv_serov)
+summary(mod_breed)
+
+mod_breeds <- glm(serovert ~ prev_b.deg:sex:season_breeder + prev_nb.deg:sex:season_breeder + 
+                   sex + season_breeder + explore + 
+                   trt + prev_month + prev_n.node + year,
+                 family=binomial, data=netmets_puuv_serov)
+summary(mod_breeds)
+
+AIC(mod_sex, mod_sexb, mod_breed, mod_breeds) #mod_sex is the lowest AIC
 
 
-mod %>% tbl_regression(exponentiate = TRUE,
+#generate pretty table of regression coefs
+library(gtsummary)
+mod_sex %>% tbl_regression(exponentiate = TRUE,
                        pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
   bold_p(t = 0.10) %>%
   bold_labels() %>%
   italicize_levels()
-
-# #check for singularity (in glmer)
-# #from here: https://rstudio-pubs-static.s3.amazonaws.com/33653_57fc7b8e5d484c909b615d8633c01d51.html
-# tt <- getME(mod,"theta")
-# ll <- getME(mod,"lower")
-# min(tt[ll==0]) # if this is less than 0.05 then you have problems
 
 #########################################################################################################
 
@@ -705,8 +442,10 @@ mod %>% tbl_regression(exponentiate = TRUE,
 
 
 
-##########################################################################################################
-#How does previous degree affect current infection status?
+
+
+########################How does previous degree affect current infection status?############################
+
 
 dat <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
   rename(Sex = sex,
@@ -717,32 +456,7 @@ dat <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
          Previous_M.degree = prev_M.deg,
          Previous_F.degree = prev_F.deg)
 
-# dat %>%
-#   mutate(puuv_ifa = case_when(puuv_ifa == "0" ~ 0,
-#                               puuv_ifa == "1" ~ 1)) %>%
-#   ggplot(aes(x=prev_wt.deg, y=puuv_ifa, color = Sex)) +
-#   geom_point() +
-#   geom_smooth() +
-#   # geom_smooth(method = "glm", method.args = list(family = "binomial")) +
-#   facet_wrap(~Sex)
-# 
-# dat %>%
-#   mutate(puuv_ifa = case_when(puuv_ifa == "0" ~ 0,
-#                               puuv_ifa == "1" ~ 1)) %>%
-#   ggplot(aes(x=Previous_F.degree, y=puuv_ifa, color = Sex)) +
-#   geom_point() +
-#   geom_smooth() + 
-#   # geom_smooth(method = "glm", method.args = list(family = "binomial")) +
-#   facet_wrap(~Sex)
-# 
-# dat %>%
-#   mutate(puuv_ifa = case_when(puuv_ifa == "0" ~ 0,
-#                               puuv_ifa == "1" ~ 1)) %>%
-#   ggplot(aes(x=Previous_M.degree, y=puuv_ifa, color = Sex)) +
-#   geom_point() +
-#   geom_smooth() + 
-#   # geom_smooth(method = "glm", method.args = list(family = "binomial")) +
-#   facet_wrap(~Sex)
+
 
 # ## at EEID, Megan Tomamichael suggested running model separately by trt to see if effects are washing out other things...
 #   #can see piecemealy how different treatment types affect prev degree affecting current infection status, but overall meh
@@ -755,19 +469,19 @@ dat <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
 ############ IS THERE A WAY to have degree be SEX AND BREEDER specific? ie so overlapping with a malebreeder != malenonbreeder
 ##### I mean, it's easy enough to make a sex-breeder column with 4 categories -- but does that make things more complicated in a model?
 
-mod <- glmer(puuv_ifa ~ prev_wt.deg:Sex:season_breeder + 
+mod_wdeg <- glmer(puuv_ifa ~ prev_wt.deg:Sex:season_breeder + 
                     Sex + season_breeder + explore +
                     Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
-                  # control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                  control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
                   family=binomial, data=dat)
 #WARNING: Failed to converge
-summary(mod)
+summary(mod_wdeg)
 
 
 mod_sex <- glmer(puuv_ifa ~ Previous_M.degree:Sex:season_breeder + Previous_F.degree:Sex:season_breeder + 
                Sex + season_breeder + explore +
                Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
-               # control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=5e5)),
+               control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
              family=binomial, data=dat)
 #WARNING: Failed to converge
 summary(mod_sex)
@@ -775,55 +489,45 @@ summary(mod_sex)
 mod_breed <- glmer(puuv_ifa ~ prev_b.deg:Sex:season_breeder + prev_nb.deg:Sex:season_breeder + 
                Sex + season_breeder + explore +
                Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+               control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
              family=binomial, data=dat)
+#WARNING: Failed to converge
 summary(mod_breed)
 
+AIC(mod_wdeg, mod_sex, mod_breed) ## breeder model has a lower AIC than sex model
 
-AIC(mod, mod_sex, mod_breed) ## breeder model has a lower AIC than sex model
-
-
+# ############## if model fails to converge: ##################
 # #from here: https://rstudio-pubs-static.s3.amazonaws.com/33653_57fc7b8e5d484c909b615d8633c01d51.html
 #     #related: https://stats.stackexchange.com/questions/164457/r-glmer-warnings-model-fails-to-converge-model-is-nearly-unidentifiable
 #     #also: https://www.learn-mlms.com/07-module-7.html#learning-objectives-5
-# #1. check singularity
-# tt <- getME(mod,"theta")
-# ll <- getME(mod,"lower")
+# #1. check singularity (works for glmer, NOT glm)
+# #from here: https://rstudio-pubs-static.s3.amazonaws.com/33653_57fc7b8e5d484c909b615d8633c01d51.html
+# tt <- getME(mod_breed,"theta")
+# ll <- getME(mod_breed,"lower")
 # min(tt[ll==0]) # if this is big, you Gucci (close to 0 is bad)
 # #2. Check the gradient calculations (I don't know what this means or what its doing)
 # #3. Restart from the previous fit, increase max number of iterations from 10k to 20k
-# ss <- getME(mod,c("theta","fixef"))
-# m2 <- update(mod, start=ss, control=glmerControl(optCtrl=list(maxfun=2e4)))
-# ## YES - this converges
+# ss <- getME(mod_sex,c("theta","fixef"))
+# m2 <- update(mod_sex, start=ss, control=glmerControl(optCtrl=list(maxfun=2e4)))
+# ## YES - this converges - but the logLik and param ests are basically the same
 # summary(m2)
 # #3. Try a different optimizer - e.g. bobyqa for first AND second phase (default is 1st phase, Nelder-Mead 2nd phase)
 # #fixed with : adding "control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5))"
-
-mod1 <- glmer(puuv_ifa ~ MODEL_PARAMS_GO_HERE,
-             control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
-             family=binomial, data=dat)
-
-## HOWEVER - the model output between mod0 and mod1 is basically the same, so warning was a false positive
-    #Ben Bolker says it's okay to use the OG model: 
-    #https://stackoverflow.com/questions/33670628/solution-to-the-warning-message-using-glmer
-
-# mod2 <- glmer(puuv_ifa ~ prev_M.deg + prev_F.deg:sex + sex + 
-#                trt + prev_month + prev_n.node + year + (1|site),
+# 
+# mod_try <- glmer(puuv_ifa ~ MODEL_PARAMS_GO_HERE,
 #              control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
 #              family=binomial, data=dat)
 # 
-# mod3 <- glmer(puuv_ifa ~ prev_M.deg + prev_F.deg + sex + 
-#                trt + prev_month + prev_n.node + year + (1|site),
-#              control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
-#              family=binomial, data=dat)
-# 
-# AIC(mod1, mod2, mod3)
+# ## HOWEVER - the model output between mod0 and mod1 is basically the same, so warning was a false positive
+#     #Ben Bolker says it's okay to use the OG model: 
+#     #https://stackoverflow.com/questions/33670628/solution-to-the-warning-message-using-glmer
+# ##################################################
 
-summary(mod1)
 
 #GLMM model diagnostics > https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
 library(DHARMa)
 #calculate residuals (then run diagnostics on these)
-simulationOutput <- simulateResiduals(fittedModel = mod_sex)
+simulationOutput <- simulateResiduals(fittedModel = mod_breed)
 plot(simulationOutput) #qq plot and residual vs fitted
 testDispersion(simulationOutput) #formal test for overdispersion
 # testZeroInflation(simulationOutput) #formal test for zero inflation (common type of overdispersion)
@@ -835,18 +539,21 @@ plotResiduals(simulationOutput, dat$Treatment)
 plotResiduals(simulationOutput, dat$Month)
 plotResiduals(simulationOutput, dat$Previous_Network_Size)
 plotResiduals(simulationOutput, dat$Year)
-plotResiduals(simulationOutput, dat$Previous_F.degree)
+plotResiduals(simulationOutput, dat$Previous_F.degree) ## this one is a little off, but honestly not that much so
 plotResiduals(simulationOutput, dat$Previous_M.degree)
+plotResiduals(simulationOutput, dat$prev_b.deg)
+plotResiduals(simulationOutput, dat$prev_nb.deg)
 
 #### OVERALL: model things look pretty good - 
     ## the residuals are fine, it's not overdispersed, singularity is okay etc
 
 
-######## OUTPUT MODEL SUMMARY #########
+
+######## pretty OUTPUT MODEL SUMMARY #########
 
 library(gtsummary) #https://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html
 
-gtsumm_mod <- mod %>% tbl_regression(exponentiate = TRUE,
+gtsumm_mod <- mod_sex %>% tbl_regression(exponentiate = TRUE,
   pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
   bold_p(t = 0.10) %>%
   bold_labels() %>%
@@ -860,5 +567,77 @@ gt::gtsave(as_gt(gtsumm_mod), expand=30, here("regression_model.png"))
 ####### end output model summary #########
 
 
+
+
+############ visualize pairwise IFA by degree with smooth ##################
+# dat %>%
+#   mutate(puuv_ifa = case_when(puuv_ifa == "0" ~ 0,
+#                               puuv_ifa == "1" ~ 1)) %>%
+#   ggplot(aes(x=prev_wt.deg, y=puuv_ifa, color = Sex)) +
+#   geom_point() +
+#   geom_smooth() +
+#   # geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+#   facet_wrap(~Sex)
+#   # facet_grid(Sex ~ Year)
+# 
+# dat %>%
+#   mutate(puuv_ifa = case_when(puuv_ifa == "0" ~ 0,
+#                               puuv_ifa == "1" ~ 1)) %>%
+#   ggplot(aes(x=Previous_F.degree, y=puuv_ifa, color = Sex)) +
+#   geom_point() +
+#   geom_smooth() +
+#   # geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+#   facet_wrap(~Sex)
+# 
+# dat %>%
+#   mutate(puuv_ifa = case_when(puuv_ifa == "0" ~ 0,
+#                               puuv_ifa == "1" ~ 1)) %>%
+#   ggplot(aes(x=Previous_M.degree, y=puuv_ifa, color = Sex)) +
+#   geom_point() +
+#   geom_smooth() +
+#   # geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+#   facet_wrap(~Sex)
+# 
+# dat %>%
+#   mutate(puuv_ifa = case_when(puuv_ifa == "0" ~ 0,
+#                               puuv_ifa == "1" ~ 1)) %>%
+#   ggplot(aes(x=prev_b.deg, y=puuv_ifa, color = Sex)) +
+#   geom_point() +
+#   geom_smooth() +
+#   # geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+#   facet_wrap(~Sex)
+# 
+# dat %>%
+#   mutate(puuv_ifa = case_when(puuv_ifa == "0" ~ 0,
+#                               puuv_ifa == "1" ~ 1)) %>%
+#   ggplot(aes(x=prev_nb.deg, y=puuv_ifa, color = Sex)) +
+#   geom_point() +
+#   geom_smooth() +
+#   # geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+#   facet_wrap(~Sex)
+
+
+
 ###############################################################################################
 
+
+
+
+
+
+
+
+
+
+######################### some random visualizations ##################################
+
+
+## COMPARE female and male degree of a given animal, color by trt
+## not sure what this is useful for, but interesting
+netmets_puuv %>%
+  ggplot(aes(x=F.deg, y=M.deg, color=trt, )) +
+  geom_point(aes(shape=sex)) +
+  scale_shape_manual(values=c(3, 16)) +
+  coord_fixed() +
+  xlim(0,4) + ylim(0,4) +
+  facet_grid(year ~ month)
