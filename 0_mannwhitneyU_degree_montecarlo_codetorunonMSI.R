@@ -752,3 +752,78 @@ Fdeg <- readRDS(here("Fdeg_breeder_results_05.12.23.rds")) %>%
 write.csv(Fdeg, here("Fdeg_breeder_results.csv"))
 
 #################################################################
+
+
+
+
+
+
+
+
+########################## old things below ################################
+
+
+
+
+
+##### compare network metric and puuv status
+
+################## THIS CODE HAS ALREADY BEEN ADDED ABOVE ##################################
+# #create a df with lagged degree (degree from previous month influences current PUUV status)
+# nm_puuv_lag <- net_mets_puuv %>% group_by(tag) %>%
+#   arrange(year, occasion, .by_group = TRUE) %>%
+#   mutate(n_ifa = length(tag)) %>%
+#   filter(n_ifa > 1) %>% #remove animals with only one IFA 
+#   select(!c(n_ifa, wt.deg, net.centralization, net.clust, mod)) %>%
+#   mutate(lag_deg = lag(deg, n=1)) %>%
+#   mutate(prev_curr_puuv = paste( lag(puuv_ifa), puuv_ifa, sep="-")) %>%
+#   drop_na(lag_deg) %>% #drop rows without previous network position
+#   filter(prev_curr_puuv == "0-0" | prev_curr_puuv == "0-1") %>% #only want neg-neg or neg-pos
+#   mutate(serovert = as.factor(case_when(prev_curr_puuv == "0-0" ~ 0,
+#                               prev_curr_puuv == "0-1" ~ 1)))
+############################################################################################
+
+# #create year-month-site column for stats
+# net_mets_puuv <- net_mets_puuv %>% unite(y_m_site, year, month, site, sep="_", remove=FALSE)
+# 
+# 
+# net_mets_puuv_list <- split(nm_puuv_lag, nm_puuv_lag$y_m_site)
+# 
+# outlist <- list()
+# 
+# for(i in 1:length(net_mets_puuv_list)){
+#   
+#   print(i)
+#   
+#   outlist[[i]] <- data.frame(y_m_site=character(length=1),
+#                              pval=numeric(length=1))
+#   
+#   outlist[[i]]$y_m_site <- paste(names(net_mets_puuv_list)[[i]])
+#   
+#   #in case all animals were pos or neg for puuv, can't run wilcox_test
+#   if (length(unique(net_mets_puuv_list[[i]]$puuv_ifa))==1) {value <- NA}
+#   
+#   #if there are no edges in the network, can't run wilcox_test
+#   if ( sum(net_mets_puuv_list[[i]]$lag_deg)==0 ) {value <- NA}
+#   
+#   #if there are animals that are pos and neg for puuv AND the network has edges, do the thing
+#   if (length(unique(net_mets_puuv_list[[i]]$puuv_ifa))==2 & sum(net_mets_puuv_list[[i]]$lag_deg)!=0 ) {
+#     #run a ?permutation? wilcox test 
+#     out <- wilcox_test(lag_deg ~ puuv_ifa, data = net_mets_puuv_list[[i]], distribution = "approximate", conf.int = TRUE)
+#     #pull the pvalue
+#     value <- pvalue(out)[1]
+#   }
+#   
+#   #write the output to the df
+#   outlist[[i]]$pval <- value
+#   
+# }
+# 
+# 
+# 
+# adataframe <- do.call(rbind.data.frame, outlist)
+# 
+# whocares <- adataframe %>% filter(pval<0.05)
+# #there does not appear to be a difference in the degree of infected vs uninfected animals (IN A SINGLE MONTH)
+
+
