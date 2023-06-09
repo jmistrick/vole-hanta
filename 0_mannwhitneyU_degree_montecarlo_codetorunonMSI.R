@@ -827,3 +827,34 @@ write.csv(Fdeg, here("Fdeg_breeder_results.csv"))
 # #there does not appear to be a difference in the degree of infected vs uninfected animals (IN A SINGLE MONTH)
 
 
+
+
+
+############# feb 17 2023 ################
+## let's just deal with one site in one month  and then we'll go from there
+
+# library(coin)
+#this is a permutation-based wilcox test (?)
+out <- wilcox_test(deg ~ puuv_ifa, data = talo_sept22, 
+                   distribution = "approximate", conf.int = TRUE)
+
+
+value <- pvalue(out)[1]
+
+
+#take net_mets_puuv down to one entry per month
+sitelevel_net_mets_puuv <- net_mets_puuv %>% group_by(year, site, month) %>%
+  slice(1) %>%
+  dplyr::select(!c(tag, samp_id, puuv_ifa, sex, deg, wt.deg))
+
+sitelevel_net_mets_puuv <- sitelevel_net_mets_puuv %>% left_join(puuv_prev, by=c("year", "site", "month")) %>%
+  mutate(prev = as.numeric(prev),
+         mod = as.numeric(mod),
+         net.centralization = as.numeric(net.centralization),
+         net.clust = as.numeric(net.clust))
+
+cor.test(sitelevel_net_mets_puuv$mod, sitelevel_net_mets_puuv$prev, method="spearman", exact=FALSE)
+
+cor.test(sitelevel_net_mets_puuv$net.centralization, sitelevel_net_mets_puuv$prev, method="spearman", exact=FALSE)
+
+cor.test(sitelevel_net_mets_puuv$net.clust, sitelevel_net_mets_puuv$prev, method="spearman", exact=FALSE)
