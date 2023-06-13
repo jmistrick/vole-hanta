@@ -8,14 +8,14 @@ library(tidyverse)
 library(janitor)
 library(lubridate)
 library(lme4)
-# library(coin) #permutation wilcox test
+library(gtsummary) #pretty regression summary tables
 
 #clear environment
 rm(list = ls())
 
 
-#### all the steps to generate 'netmets_puuv' have been commented out as of 06.09.23 (post sex.deg debug) - readRDS to load file
-
+# #### all the steps to generate 'netmets_puuv' have been commented out as of 06.09.23 (post sex.deg debug) - readRDS to load file
+# 
 # ##########---------- LOAD NETWORK METRICS and VOLE CAPTURE METADATA -----------###########
 # 
 # # ### Fulltrap and netmets dfs created separately, load 2021 and 2022 data here, clean as needed
@@ -71,15 +71,6 @@ rm(list = ls())
 # netmets_full <- readRDS(here("netmets_full_06.09.23.rds"))
 # 
 # 
-# 
-# 
-# # #visualize degree by month for trt and year
-# # netmets_full %>%
-# #   ggplot(aes(x=month, y=strength, fill=trt)) +
-# #   geom_violin() +
-# #   facet_wrap(~year, nrow=2)
-# 
-# 
 # #########################################   LOAD & CLEAN PUUV IFA DATA   ########################################
 # 
 # # #load, clean, format PUUV IFA data
@@ -106,7 +97,7 @@ rm(list = ls())
 # #   dplyr::select(FINAL_puuv, samp_id) %>%
 # #   rename(puuv_ifa = FINAL_puuv)
 # # #output is a df with two columns, sample ID and PUUV status (0,1)
-# # 
+# #
 # # # Save puuv_data to a rdata file
 # # saveRDS(puuv_data, file = here("hantadata_06.09.23.rds"))
 # 
@@ -217,8 +208,7 @@ rm(list = ls())
 # 
 # 
 # 
-# 
-# 
+# ######### lagged degree and seroconvert status ###############
 # # add previous (lagged) degree (degree from previous month influences current PUUV status)
 # # add 0,1 for serovert - animals that go 0-0 or 0-1
 #     # BUT! the previous month has to be in the same year (don't want 2021 fall to influence 2022 spring)
@@ -229,6 +219,10 @@ rm(list = ls())
 #          prev_M.deg = lag(M.deg, n=1),
 #          prev_b.deg = lag(b.deg, n=1),
 #          prev_nb.deg = lag(nb.deg, n=1),
+#          prev_mb.deg = lag(mb.deg, n=1),
+#          prev_mnb.deg = lag(mnb.deg, n=1),
+#          prev_fb.deg = lag(fb.deg, n=1),
+#          prev_fnb.deg = lag(fnb.deg, n=1),
 #          prev_n.node = lag(n.node, n=1),
 #          prev_month = lag(month, n=1)) %>%
 #   mutate(prev_curr_puuv = paste(lag(puuv_ifa), puuv_ifa, sep="-")) %>%
@@ -245,12 +239,6 @@ rm(list = ls())
 netmets_puuv <- readRDS(here("netmets_puuv_06.09.23.rds"))
 
 ##################################################################################################################
-
-
-
-
-
-
 
 
 
@@ -326,52 +314,6 @@ netmets_puuv <- readRDS(here("netmets_puuv_06.09.23.rds"))
 
 
 
-
-
-
-
-
-
-
-
-######################How does CURRENT degree affect CURRENT infection status?################################
-
-dat <- netmets_puuv
-
-#infected males have higher deg than infected? females similar effect size, not as significant
-mod <- glmer(puuv_ifa ~ wt.deg:sex + sex + season_breeder + explore + trt + month + n.node + year + (1|site),
-             family=binomial, data=dat)
-summary(mod)
-
-#infected animals have higher degree with same sex? (slightly stronger effect for females, but only marginally signif)
-mod <- glmer(puuv_ifa ~ F.deg:sex + M.deg:sex + sex + season_breeder + trt + month + n.node + year + (1|site),
-             family=binomial, data=dat)
-summary(mod)
-
-#WARNING: Failed to converge
-    ## BEN BOLKER says it's okay, the bobyqa ("Bound Optimization BY Quadratic Approximation") isn't actually doing anything
-    ## FALSE POSITIVE 'failed to converge'
-
-#fixed with : adding "control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5))"
-#https://stats.stackexchange.com/questions/164457/r-glmer-warnings-model-fails-to-converge-model-is-nearly-unidentifiable
-    #also: https://www.learn-mlms.com/07-module-7.html#learning-objectives-5
-
-
-#RESULTS - Current infection maybe correlates with higher degree (more apparent for males than females)
-
-
-# #visualize infection status by weighted deg by sex,trt,year
-# dat %>%
-#   ggplot(aes(x=wt.deg, y=puuv_ifa, color=sex, group=sex)) +
-#   geom_point() +
-#   geom_smooth() +
-#   facet_grid(trt~year)
-
-###############################end current degree, current infection################################
-
-
-
-
 #########################################################################################################
 ########### HOW does previous month's network position affect (likelihood of?) seroconversion ###########
 
@@ -381,7 +323,7 @@ netmets_puuv_serov <- netmets_puuv %>%
   drop_na(serovert)
 
 # #summarize number of 0-0 vs number of 0-1 by year_trt
-# netmets_puuv_serov %>% 
+# netmets_puuv_serov %>%
 #   unite(yr_trt, year, trt, remove=FALSE) %>%
 #   ungroup() %>% group_by(yr_trt) %>%
 #   summarise(n_00 = sum(serovert=="0"),
@@ -395,45 +337,128 @@ netmets_puuv_serov <- netmets_puuv %>%
 # data <- netmets_puuv_serov %>% ungroup() %>% select(c(wt.deg, puuv_ifa, month, trt, year))
 # ggpairs(data)
 
+mod_degs <- glmer(serovert ~ prev_wt.deg:sex +
+                    sex + season_breeder + explore + 
+                    trt + prev_month + prev_n.node + year + (1|site),
+                  control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
+                  family=binomial, data=netmets_puuv_serov)
 
-#likelihood of seroconverting based on previous network position
-#SINGULARITY IS AN ISSUE to do glmer (1|site) - some sites 0 or 1 seroverter
-#running just glm's - NO RANDOM EFFECTS - as a result 
+mod_degb <- glmer(serovert ~ prev_wt.deg:season_breeder + 
+                    sex + season_breeder + explore + 
+                    trt + prev_month + prev_n.node + year + (1|site),
+                  control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
+                  family=binomial, data=netmets_puuv_serov)
 
-mod_sex <- glm(serovert ~ prev_M.deg:sex + prev_F.deg:sex + 
+mod_degsb <- glmer(serovert ~ prev_wt.deg:sex:season_breeder + 
+                     sex + season_breeder + explore + 
+                     trt + prev_month + prev_n.node + year + (1|site),
+                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
+                   family=binomial, data=netmets_puuv_serov)
+
+
+
+mod_sexs <- glmer(serovert ~ prev_M.deg:sex + prev_F.deg:sex + 
              sex + season_breeder + explore + 
-             trt + prev_month + prev_n.node + year,
+             trt + prev_month + prev_n.node + year + (1|site),
+             control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
              family=binomial, data=netmets_puuv_serov)
-summary(mod_sex)
 
-mod_sexb <- glm(serovert ~ prev_M.deg:sex:season_breeder + prev_F.deg:sex:season_breeder + 
+mod_sexb <- glmer(serovert ~ prev_M.deg:season_breeder + prev_F.deg:season_breeder + 
+                    sex + season_breeder + explore + 
+                    trt + prev_month + prev_n.node + year + (1|site),
+                  control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
+                  family=binomial, data=netmets_puuv_serov)
+
+mod_sexsb <- glmer(serovert ~ prev_M.deg:sex:season_breeder + prev_F.deg:sex:season_breeder + 
              sex + season_breeder + explore + 
-             trt + prev_month + prev_n.node + year,
+             trt + prev_month + prev_n.node + year + (1|site),
+             control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
            family=binomial, data=netmets_puuv_serov)
-summary(mod_sexb)
+# summary(mod_sexsb)
 
-mod_breed <- glm(serovert ~ prev_b.deg:sex + prev_nb.deg:sex + 
+mod_breeds <- glmer(serovert ~ prev_b.deg:sex + prev_nb.deg:sex + 
                    sex + season_breeder + explore + 
-                   trt + prev_month + prev_n.node + year,
+                   trt + prev_month + prev_n.node + year + (1|site),
+                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
                  family=binomial, data=netmets_puuv_serov)
-summary(mod_breed)
 
-mod_breeds <- glm(serovert ~ prev_b.deg:sex:season_breeder + prev_nb.deg:sex:season_breeder + 
+mod_breedb <- glmer(serovert ~ prev_b.deg:season_breeder + prev_nb.deg:season_breeder + 
+                      sex + season_breeder + explore + 
+                      trt + prev_month + prev_n.node + year + (1|site),
+                    control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
+                    family=binomial, data=netmets_puuv_serov)
+
+mod_breedsb <- glmer(serovert ~ prev_b.deg:sex:season_breeder + prev_nb.deg:sex:season_breeder + 
                    sex + season_breeder + explore + 
-                   trt + prev_month + prev_n.node + year,
+                   trt + prev_month + prev_n.node + year + (1|site),
+                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
                  family=binomial, data=netmets_puuv_serov)
-summary(mod_breeds)
+# summary(mod_breeds)
 
-AIC(mod_sex, mod_sexb, mod_breed, mod_breeds) #mod_sex is the lowest AIC
+mod_sbs <- glmer(serovert ~ prev_mb.deg:sex + prev_mnb.deg:sex +
+                      prev_fb.deg:sex + prev_fnb.deg:sex +
+                      sex + season_breeder + explore +
+                      trt + prev_month + prev_n.node + year + (1|site),
+                    control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                    family=binomial, data=netmets_puuv_serov)
+
+mod_sbb <- glmer(serovert ~ prev_mb.deg:season_breeder + prev_mnb.deg:season_breeder +
+                      prev_fb.deg:season_breeder + prev_fnb.deg:season_breeder +
+                      sex + season_breeder + explore +
+                      trt + prev_month + prev_n.node + year + (1|site),
+                    control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                    family=binomial, data=netmets_puuv_serov)
+
+mod_sbsb <- glmer(serovert ~ prev_mb.deg:sex:season_breeder + prev_mnb.deg:sex:season_breeder +
+                      prev_fb.deg:sex:season_breeder + prev_fnb.deg:sex:season_breeder +
+                      sex + season_breeder + explore +
+                      trt + prev_month + prev_n.node + year + (1|site),
+                    control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                    family=binomial, data=netmets_puuv_serov)
+
+AIC(mod_degs, mod_degb, mod_degsb, 
+    mod_sexs, mod_sexb, mod_sexsb, 
+    mod_breeds, mod_breedb, mod_breedsb,
+    mod_sbs, mod_sbb, mod_sbsb) #mod_sexs, mod_sexb, mod_sbs have similar - lowest AIC
 
 
 #generate pretty table of regression coefs
-library(gtsummary)
-mod_sex %>% tbl_regression(exponentiate = TRUE,
+# library(gtsummary)
+mod_sbs %>% tbl_regression(exponentiate = TRUE,
                        pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
   bold_p(t = 0.10) %>%
   bold_labels() %>%
   italicize_levels()
+
+
+############# model diagnostics ############
+#2 best-fit models are mod_sexs and mod_sbs
+
+dat <- netmets_puuv_serov
+
+#GLMM model diagnostics > https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
+library(DHARMa)
+#calculate residuals (then run diagnostics on these)
+simulationOutput <- simulateResiduals(fittedModel = mod_sexs)
+plot(simulationOutput) #qq plot and residual vs fitted
+testDispersion(simulationOutput) #formal test for overdispersion
+# testZeroInflation(simulationOutput) #formal test for zero inflation (common type of overdispersion)
+
+plotResiduals(simulationOutput, dat$sex)
+plotResiduals(simulationOutput, dat$season_breeder)
+plotResiduals(simulationOutput, dat$explore)
+plotResiduals(simulationOutput, dat$trt)
+plotResiduals(simulationOutput, dat$month)
+plotResiduals(simulationOutput, dat$prev_n.node)
+plotResiduals(simulationOutput, dat$year)
+plotResiduals(simulationOutput, dat$prev_F.deg) 
+plotResiduals(simulationOutput, dat$prev_M.deg)
+plotResiduals(simulationOutput, dat$prev_b.deg)
+plotResiduals(simulationOutput, dat$prev_nb.deg)
+
+#### OVERALL: DHARMa look not amazing for both
+
+
 
 #########################################################################################################
 
@@ -444,10 +469,9 @@ mod_sex %>% tbl_regression(exponentiate = TRUE,
 
 
 
-########################How does previous degree affect current infection status?############################
+######################## How does previous degree affect current infection status? ############################
 
-
-dat <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
+netmets_puuv_prevdeg <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
   rename(Sex = sex,
          Treatment = trt,
          Previous_Month = prev_month,
@@ -455,7 +479,6 @@ dat <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
          Year = year,
          Previous_M.degree = prev_M.deg,
          Previous_F.degree = prev_F.deg)
-
 
 
 # ## at EEID, Megan Tomamichael suggested running model separately by trt to see if effects are washing out other things...
@@ -466,35 +489,102 @@ dat <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
 #              family=binomial, data=dat_trt)
 
 
-############ IS THERE A WAY to have degree be SEX AND BREEDER specific? ie so overlapping with a malebreeder != malenonbreeder
-##### I mean, it's easy enough to make a sex-breeder column with 4 categories -- but does that make things more complicated in a model?
-
-mod_wdeg <- glmer(puuv_ifa ~ prev_wt.deg:Sex:season_breeder + 
+mod_wdegs <- glmer(puuv_ifa ~ prev_wt.deg:Sex + 
                     Sex + season_breeder + explore +
                     Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
-                  family=binomial, data=dat)
+                  family=binomial, data=netmets_puuv_prevdeg)
+
+mod_wdegb <- glmer(puuv_ifa ~ prev_wt.deg:season_breeder + 
+                    Sex + season_breeder + explore +
+                    Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+                  control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                  family=binomial, data=netmets_puuv_prevdeg)
+
+mod_wdegsb <- glmer(puuv_ifa ~ prev_wt.deg:Sex:season_breeder + 
+                    Sex + season_breeder + explore +
+                    Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+                  control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                  family=binomial, data=netmets_puuv_prevdeg)
 #WARNING: Failed to converge
-summary(mod_wdeg)
+# summary(mod_wdeg)
 
 
-mod_sex <- glmer(puuv_ifa ~ Previous_M.degree:Sex:season_breeder + Previous_F.degree:Sex:season_breeder + 
+mod_sexs <- glmer(puuv_ifa ~ Previous_M.degree:Sex + Previous_F.degree:Sex + 
+                   Sex + season_breeder + explore +
+                   Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+                 control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                 family=binomial, data=netmets_puuv_prevdeg)
+
+mod_sexb <- glmer(puuv_ifa ~ Previous_M.degree:season_breeder + Previous_F.degree:season_breeder + 
+                   Sex + season_breeder + explore +
+                   Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+                 control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                 family=binomial, data=netmets_puuv_prevdeg)
+
+mod_sexsb <- glmer(puuv_ifa ~ Previous_M.degree:Sex:season_breeder + Previous_F.degree:Sex:season_breeder + 
                Sex + season_breeder + explore +
                Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
                control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
-             family=binomial, data=dat)
+             family=binomial, data=netmets_puuv_prevdeg)
 #WARNING: Failed to converge
-summary(mod_sex)
+# summary(mod_sex)
 
-mod_breed <- glmer(puuv_ifa ~ prev_b.deg:Sex:season_breeder + prev_nb.deg:Sex:season_breeder + 
+mod_breeds <- glmer(puuv_ifa ~ prev_b.deg:Sex + prev_nb.deg:Sex + 
+                     Sex + season_breeder + explore +
+                     Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                   family=binomial, data=netmets_puuv_prevdeg)
+
+mod_breedb <- glmer(puuv_ifa ~ prev_b.deg:season_breeder + prev_nb.deg:season_breeder + 
+                     Sex + season_breeder + explore +
+                     Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                   family=binomial, data=netmets_puuv_prevdeg)
+
+mod_breedsb <- glmer(puuv_ifa ~ prev_b.deg:Sex:season_breeder + prev_nb.deg:Sex:season_breeder + 
                Sex + season_breeder + explore +
                Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
                control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
-             family=binomial, data=dat)
+             family=binomial, data=netmets_puuv_prevdeg)
 #WARNING: Failed to converge
-summary(mod_breed)
+summary(mod_breedsb)
 
-AIC(mod_wdeg, mod_sex, mod_breed) ## breeder model has a lower AIC than sex model
+mod_sbs <- glmer(puuv_ifa ~ prev_mb.deg:Sex + prev_mnb.deg:Sex + 
+                  prev_fb.deg:Sex + prev_fnb.deg:Sex + 
+                  Sex + season_breeder + explore +
+                  Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+                control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                family=binomial, data=netmets_puuv_prevdeg)
+
+mod_sbb <- glmer(puuv_ifa ~ prev_mb.deg:season_breeder + prev_mnb.deg:season_breeder + 
+                  prev_fb.deg:season_breeder + prev_fnb.deg:season_breeder + 
+                  Sex + season_breeder + explore +
+                  Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+                control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                family=binomial, data=netmets_puuv_prevdeg)
+
+mod_sbsb <- glmer(puuv_ifa ~ prev_mb.deg:Sex:season_breeder + prev_mnb.deg:Sex:season_breeder + 
+                           prev_fb.deg:Sex:season_breeder + prev_fnb.deg:Sex:season_breeder + 
+                     Sex + season_breeder + explore +
+                     Treatment + Previous_Month + Previous_Network_Size + Year + (1|site),
+                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+                   family=binomial, data=netmets_puuv_prevdeg)
+#WARNING: Failed to converge
+# summary(mod_sb)
+
+AIC(mod_wdegs, mod_wdegb, mod_wdegsb, 
+    mod_sexs, mod_sexsb, mod_sexb,
+    mod_breeds, mod_breedb, mod_breedsb,
+    mod_sbs, mod_sbb, mod_sbsb) ## mod_breedsb has lowest AIC score
+
+#generate pretty table of regression coefs
+# library(gtsummary)
+mod_sbsb %>% tbl_regression(exponentiate = TRUE,
+                           pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
+  bold_p(t = 0.10) %>%
+  bold_labels() %>%
+  italicize_levels()
 
 # ############## if model fails to converge: ##################
 # #from here: https://rstudio-pubs-static.s3.amazonaws.com/33653_57fc7b8e5d484c909b615d8633c01d51.html
@@ -524,10 +614,15 @@ AIC(mod_wdeg, mod_sex, mod_breed) ## breeder model has a lower AIC than sex mode
 # ##################################################
 
 
+####### model diagnostics #########
+#AIC best models are mod_breedsb and mod_sbsb
+
+dat <- netmets_puuv_prevdeg
+
 #GLMM model diagnostics > https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
 library(DHARMa)
 #calculate residuals (then run diagnostics on these)
-simulationOutput <- simulateResiduals(fittedModel = mod_breed)
+simulationOutput <- simulateResiduals(fittedModel = mod_sbsb)
 plot(simulationOutput) #qq plot and residual vs fitted
 testDispersion(simulationOutput) #formal test for overdispersion
 # testZeroInflation(simulationOutput) #formal test for zero inflation (common type of overdispersion)
@@ -631,13 +726,161 @@ gt::gtsave(as_gt(gtsumm_mod), expand=30, here("regression_model.png"))
 
 ######################### some random visualizations ##################################
 
+# ## COMPARE female and male degree of a given animal, color by trt
+# ## not sure what this is useful for, but interesting
+# netmets_puuv %>%
+#   ggplot(aes(x=F.deg, y=M.deg, color=trt, )) +
+#   geom_point(aes(shape=sex)) +
+#   scale_shape_manual(values=c(3, 16)) +
+#   coord_fixed() +
+#   xlim(0,4) + ylim(0,4) +
+#   facet_grid(year ~ month)
 
-## COMPARE female and male degree of a given animal, color by trt
-## not sure what this is useful for, but interesting
-netmets_puuv %>%
-  ggplot(aes(x=F.deg, y=M.deg, color=trt, )) +
-  geom_point(aes(shape=sex)) +
-  scale_shape_manual(values=c(3, 16)) +
-  coord_fixed() +
-  xlim(0,4) + ylim(0,4) +
-  facet_grid(year ~ month)
+######################################################################################
+
+
+
+### Janine of June 12 removed this - the model diagnostics are wonky and tbh I still don't know what current infection and current overlap mean
+## are you more overlapping because you're infected or are you infected because you're more overlapping? 
+## to really get at 'behavior' we'd need a pre- post- comparison for animals that seroconvert but there are so few of them
+## and the populations change so much month-to-month, who is to say they're behaving differently or their environment is just changing
+
+# ###################### How does CURRENT degree affect CURRENT infection status? ################################
+# 
+# dat <- netmets_puuv
+# 
+# #infected males have higher deg than infected? females similar effect size, not as significant
+# mod_degs <- glmer(puuv_ifa ~ wt.deg:sex + 
+#                     sex + season_breeder + explore + 
+#                     trt + month + n.node + year + (1|site),
+#                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
+#                   family=binomial, data=dat)
+# 
+# mod_degb <- glmer(puuv_ifa ~ wt.deg:season_breeder + 
+#                     sex + season_breeder + explore + 
+#                     trt + month + n.node + year + (1|site),
+#                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
+#                   family=binomial, data=dat)
+# 
+# mod_degsb <- glmer(puuv_ifa ~ wt.deg:sex:season_breeder + 
+#                      sex + season_breeder + explore + 
+#                      trt + month + n.node + year + (1|site),
+#                    control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
+#                    family=binomial, data=dat)
+# summary(mod_deg)
+# 
+# #infected animals have higher degree with same sex? (slightly stronger effect for females, but only marginally signif)
+# mod_sexs <- glmer(puuv_ifa ~ F.deg:sex + M.deg:sex + 
+#                     sex + season_breeder + 
+#                     trt + month + n.node + year + (1|site),
+#                   family=binomial, data=dat)
+# 
+# mod_sexb <- glmer(puuv_ifa ~ F.deg:season_breeder + M.deg:season_breeder + 
+#                     sex + season_breeder + 
+#                     trt + month + n.node + year + (1|site),
+#                   family=binomial, data=dat)
+# 
+# mod_sexsb <- glmer(puuv_ifa ~ F.deg:sex:season_breeder + M.deg:sex:season_breeder + 
+#                      sex + season_breeder + 
+#                      trt + month + n.node + year + (1|site),
+#                    family=binomial, data=dat)
+# summary(mod_sex)
+# 
+# #breeding status
+# mod_breeds <- glmer(puuv_ifa ~ b.deg:sex + nb.deg:sex + 
+#                       sex + season_breeder + 
+#                       trt + month + n.node + year + (1|site),
+#                     family=binomial, data=dat)
+# 
+# mod_breedb <- glmer(puuv_ifa ~ b.deg:season_breeder + nb.deg:season_breeder + 
+#                       sex + season_breeder + 
+#                       trt + month + n.node + year + (1|site),
+#                     family=binomial, data=dat)
+# 
+# mod_breedsb <- glmer(puuv_ifa ~ b.deg:sex:season_breeder + nb.deg:sex:season_breeder + 
+#                        sex + season_breeder + 
+#                        trt + month + n.node + year + (1|site),
+#                      control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+#                      family=binomial, data=dat)
+# summary(mod_breedsb)
+# 
+# #sex-breeder
+# mod_sbs <- glmer(puuv_ifa ~ mb.deg:sex + mnb.deg:sex + 
+#                    fb.deg:sex + fnb.deg:sex + 
+#                    sex + season_breeder + 
+#                    trt + month + n.node + year + (1|site),
+#                  control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+#                  family=binomial, data=dat)
+# 
+# mod_sbb <- glmer(puuv_ifa ~ mb.deg:season_breeder + mnb.deg:season_breeder + 
+#                    fb.deg:season_breeder + fnb.deg:season_breeder + 
+#                    sex + season_breeder + 
+#                    trt + month + n.node + year + (1|site),
+#                  control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+#                  family=binomial, data=dat)
+# 
+# mod_sbsb <- glmer(puuv_ifa ~ mb.deg:sex:season_breeder + mnb.deg:sex:season_breeder + 
+#                     fb.deg:sex:season_breeder + fnb.deg:sex:season_breeder +  
+#                     sex + season_breeder + 
+#                     trt + month + n.node + year + (1|site),
+#                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
+#                   family=binomial, data=dat)
+# 
+# 
+# AIC(mod_degs, mod_degb, mod_degsb, 
+#     mod_sexs, mod_sexb, mod_sexsb,
+#     mod_breeds, mod_breedb, mod_breedsb,
+#     mod_sbs, mod_sbb, mod_sbsb)  #mod_breedsb has lowest AIC
+# 
+# #WARNING: Failed to converge
+# #fixed with : adding "control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5))"
+# #https://stats.stackexchange.com/questions/164457/r-glmer-warnings-model-fails-to-converge-model-is-nearly-unidentifiable
+# #also: https://www.learn-mlms.com/07-module-7.html#learning-objectives-5
+# ## BEN BOLKER says it's okay, the bobyqa ("Bound Optimization BY Quadratic Approximation") isn't actually doing anything
+# ## adding the bobyqa optimzer makes the 'failure to converge' warning go away, but doesn't change model output
+# ## FALSE POSITIVE 'failed to converge'
+# 
+# #RESULTS - Current infection maybe correlates with higher degree (more apparent for males than females)
+# 
+# #generate pretty table of regression coefs
+# # library(gtsummary)
+# mod_breedsb %>% tbl_regression(exponentiate = TRUE,
+#                                pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
+#   bold_p(t = 0.10) %>%
+#   bold_labels() %>%
+#   italicize_levels()
+# 
+# # #visualize infection status by weighted deg by sex,trt,year
+# # dat %>%
+# #   ggplot(aes(x=wt.deg, y=puuv_ifa, color=sex, group=sex)) +
+# #   geom_point() +
+# #   geom_smooth() +
+# #   facet_grid(trt~year)
+# 
+# 
+# ############# model diagnostics ############
+# #2 best-fit model is mod_breedsb
+# 
+# #GLMM model diagnostics > https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
+# library(DHARMa)
+# #calculate residuals (then run diagnostics on these)
+# simulationOutput <- simulateResiduals(fittedModel = mod_degs)
+# plot(simulationOutput) #qq plot and residual vs fitted
+# testDispersion(simulationOutput) #formal test for overdispersion
+# # testZeroInflation(simulationOutput) #formal test for zero inflation (common type of overdispersion)
+# 
+# plotResiduals(simulationOutput, dat$sex)
+# plotResiduals(simulationOutput, dat$season_breeder)
+# plotResiduals(simulationOutput, dat$explore)
+# plotResiduals(simulationOutput, dat$trt)
+# plotResiduals(simulationOutput, dat$month)
+# plotResiduals(simulationOutput, dat$prev_n.node)
+# plotResiduals(simulationOutput, dat$year)
+# plotResiduals(simulationOutput, dat$prev_F.deg) 
+# plotResiduals(simulationOutput, dat$prev_M.deg)
+# plotResiduals(simulationOutput, dat$prev_b.deg)
+# plotResiduals(simulationOutput, dat$prev_nb.deg)
+# 
+# #### OVERALL: DHARMa look not amazing for both
+# 
+# ###############################end current degree, current infection################################
