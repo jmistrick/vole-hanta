@@ -448,7 +448,7 @@ plotResiduals(simulationOutput, dat$sex)
 plotResiduals(simulationOutput, dat$season_breeder)
 plotResiduals(simulationOutput, dat$explore)
 plotResiduals(simulationOutput, dat$trt)
-plotResiduals(simulationOutput, dat$month)
+plotResiduals(simulationOutput, dat$Previous_Month)
 plotResiduals(simulationOutput, dat$prev_n.node)
 plotResiduals(simulationOutput, dat$year)
 plotResiduals(simulationOutput, dat$prev_F.deg) 
@@ -479,6 +479,7 @@ netmets_puuv_prevdeg <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
          Year = year,
          Previous_M.degree = prev_M.deg,
          Previous_F.degree = prev_F.deg)
+
 
 
 # ## at EEID, Megan Tomamichael suggested running model separately by trt to see if effects are washing out other things...
@@ -631,7 +632,7 @@ plotResiduals(simulationOutput, dat$Sex)
 plotResiduals(simulationOutput, dat$season_breeder)
 plotResiduals(simulationOutput, dat$explore)
 plotResiduals(simulationOutput, dat$Treatment)
-plotResiduals(simulationOutput, dat$Month)
+plotResiduals(simulationOutput, dat$Previous_Month)
 plotResiduals(simulationOutput, dat$Previous_Network_Size)
 plotResiduals(simulationOutput, dat$Year)
 plotResiduals(simulationOutput, dat$Previous_F.degree) ## this one is a little off, but honestly not that much so
@@ -714,7 +715,6 @@ gt::gtsave(as_gt(gtsumm_mod), expand=30, here("regression_model.png"))
 
 
 ###############################################################################################
-
 
 
 
