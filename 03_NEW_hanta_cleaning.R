@@ -238,6 +238,10 @@ rm(list = ls())
 #load netmets_puuv
 netmets_puuv <- readRDS(here("netmets_puuv_06.09.23.rds"))
 
+# #entries per year
+# y1 <- netmets_puuv %>% filter(year=="2021") #1029 in 2021
+# y2 <- netmets_puuv %>% filter(year=="2022") #1062 in 2022
+
 ##################################################################################################################
 
 
@@ -480,6 +484,8 @@ netmets_puuv_prevdeg <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
          Previous_M.degree = prev_M.deg,
          Previous_F.degree = prev_F.deg)
 
+# y1 <- netmets_puuv_prevdeg %>% filter(Year=="2021")
+# y2 <- netmets_puuv_prevdeg %>% filter(Year=="2022")
 
 
 # ## at EEID, Megan Tomamichael suggested running model separately by trt to see if effects are washing out other things...
