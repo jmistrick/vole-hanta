@@ -595,6 +595,20 @@ mod_UC <- glmer(puuv_ifa ~ prev_b.deg:Sex + prev_nb.deg:Sex +
   # Males: previous breeder deg 1.64 increase infection (p=0.071)
   # Males: previous nonbreeder deg 0.05 decrease infection (p=0.071)
 
+nm_FC %>% filter(Sex=="M") %>%
+  mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
+                              puuv_ifa=="1" ~ 1)) %>%
+  ggplot(aes(x=prev_nb.deg, y=puuv_ifa)) +
+  geom_point() +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"))
+
+nm_FC %>% filter(Sex=="M") %>%
+  mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
+                              puuv_ifa=="1" ~ 1)) %>%
+  ggplot(aes(x=prev_b.deg, y=puuv_ifa)) +
+  geom_point() +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"))
+
 #unfed deworm
 mod_UD <- glmer(puuv_ifa ~ prev_b.deg:Sex + prev_nb.deg:Sex + 
                       Sex + season_breeder + explore +
@@ -604,6 +618,15 @@ mod_UD <- glmer(puuv_ifa ~ prev_b.deg:Sex + prev_nb.deg:Sex +
 ## RESULTS:
   # (Prev month matters, less likely to be pos in Sept, Oct)
   # Females: previous nonbreeder degree 42.6 (yes 42) increase infection (p=0.021)
+
+### but none of the plots (with just degree) are that compelling
+# nm_UD %>% filter(Sex=="F") %>%
+#   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
+#                               puuv_ifa=="1" ~ 1)) %>%
+#   ggplot(aes(x=prev_nb.deg, y=puuv_ifa)) +
+#   geom_point() +
+#   geom_smooth(method = "glm", method.args = list(family = "binomial"))
+
 
 #fed control
 mod_FC <- glmer(puuv_ifa ~ prev_mb.deg:Sex:season_breeder + prev_mnb.deg:Sex:season_breeder + 
@@ -620,6 +643,15 @@ mod_FC <- glmer(puuv_ifa ~ prev_mb.deg:Sex:season_breeder + prev_mnb.deg:Sex:sea
   # Male nonbreeder: prev male nb degree makes more likely to be infected (with a ridiculously large estimate, marginal pval)
   # ?? M and F nonbreeders with fnb degree ?? Odds Ratio = 0 - does that suggest increasing fnb deg makes you (nearly) definitely PUUV-?
 
+### but none of the plots (with just degree) are that compelling
+# nm_FC %>% filter(Sex=="F" & season_breeder=="nonbreeder") %>%
+#   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
+#                               puuv_ifa=="1" ~ 1)) %>%
+#   ggplot(aes(x=prev_fnb.deg, y=puuv_ifa)) +
+#   geom_point() +
+#   geom_smooth(method = "glm", method.args = list(family = "binomial"))
+
+
 #fed deworm
 mod_FD <- glmer(puuv_ifa ~ prev_mb.deg:Sex:season_breeder + prev_mnb.deg:Sex:season_breeder + 
                     prev_fb.deg:Sex:season_breeder + prev_fnb.deg:Sex:season_breeder + 
@@ -635,6 +667,22 @@ mod_FD <- glmer(puuv_ifa ~ prev_mb.deg:Sex:season_breeder + prev_mnb.deg:Sex:sea
   # Explore: more exploratory animals were less likely  0.63 to be infected (p=0.030)
   # Female breeder: male breeder deg corr with less likely 0.29 to be infected (p=0.015)
   # Female breeder: female breeder deg corr with 4.26 more likely to be infected (p=0.005)
+
+nm_FD %>% filter(Sex=="F" & season_breeder=="breeder") %>%
+  mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
+                              puuv_ifa=="1" ~ 1)) %>%
+  ggplot(aes(x=prev_fb.deg, y=puuv_ifa)) +
+  geom_point() +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"))
+
+# ehh wide CI
+nm_FD %>% filter(Sex=="F" & season_breeder=="breeder") %>%
+  mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
+                              puuv_ifa=="1" ~ 1)) %>%
+  ggplot(aes(x=prev_mb.deg, y=puuv_ifa)) +
+  geom_point() +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"))
+
 
 
 ######## pretty OUTPUT MODEL SUMMARY #########
