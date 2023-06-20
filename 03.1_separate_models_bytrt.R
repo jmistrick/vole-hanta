@@ -595,19 +595,31 @@ mod_UC <- glmer(puuv_ifa ~ prev_b.deg:Sex + prev_nb.deg:Sex +
   # Males: previous breeder deg 1.64 increase infection (p=0.071)
   # Males: previous nonbreeder deg 0.05 decrease infection (p=0.071)
 
-nm_FC %>% filter(Sex=="M") %>%
+plot1 <- nm_FC %>% filter(Sex=="M") %>%
   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
                               puuv_ifa=="1" ~ 1)) %>%
   ggplot(aes(x=prev_nb.deg, y=puuv_ifa)) +
   geom_point() +
-  geom_smooth(method = "glm", method.args = list(family = "binomial"))
+  geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+  labs(title="Males: Previous Subadult Degree") +
+  xlab("Previous Subadult Degree") +
+  ylab("PUUV Infection Status (IFA)")
 
-nm_FC %>% filter(Sex=="M") %>%
+plot2 <- nm_FC %>% filter(Sex=="M") %>%
   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
                               puuv_ifa=="1" ~ 1)) %>%
   ggplot(aes(x=prev_b.deg, y=puuv_ifa)) +
   geom_point() +
-  geom_smooth(method = "glm", method.args = list(family = "binomial"))
+  geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+  labs(title="Males: Previous Adult Degree")+
+  xlab("Previous Adult Degree") +
+  ylab("PUUV Infection Status (IFA)")
+
+library(cowplot)
+png(filename = "UC_prev.b-nb.deg_forMales.png",
+    width=10, height=5, units="in", res=600)
+plot_grid(plot1, plot2, labels="AUTO")
+dev.off()
 
 #unfed deworm
 mod_UD <- glmer(puuv_ifa ~ prev_b.deg:Sex + prev_nb.deg:Sex + 
@@ -619,13 +631,13 @@ mod_UD <- glmer(puuv_ifa ~ prev_b.deg:Sex + prev_nb.deg:Sex +
   # (Prev month matters, less likely to be pos in Sept, Oct)
   # Females: previous nonbreeder degree 42.6 (yes 42) increase infection (p=0.021)
 
-### but none of the plots (with just degree) are that compelling
-# nm_UD %>% filter(Sex=="F") %>%
-#   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
-#                               puuv_ifa=="1" ~ 1)) %>%
-#   ggplot(aes(x=prev_nb.deg, y=puuv_ifa)) +
-#   geom_point() +
-#   geom_smooth(method = "glm", method.args = list(family = "binomial"))
+## but none of the plots (with just degree) are that compelling
+nm_UD %>% filter(Sex=="F") %>%
+  mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
+                              puuv_ifa=="1" ~ 1)) %>%
+  ggplot(aes(x=prev_nb.deg, y=puuv_ifa)) +
+  geom_point() +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"))
 
 
 #fed control
@@ -643,8 +655,41 @@ mod_FC <- glmer(puuv_ifa ~ prev_mb.deg:Sex:season_breeder + prev_mnb.deg:Sex:sea
   # Male nonbreeder: prev male nb degree makes more likely to be infected (with a ridiculously large estimate, marginal pval)
   # ?? M and F nonbreeders with fnb degree ?? Odds Ratio = 0 - does that suggest increasing fnb deg makes you (nearly) definitely PUUV-?
 
-### but none of the plots (with just degree) are that compelling
+# #EXPLORE: not terribly compelling
+# nm_FC %>% 
+#   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
+#                               puuv_ifa=="1" ~ 1)) %>%
+#   ggplot(aes(x=explore, y=puuv_ifa)) +
+#   geom_point() +
+#   geom_smooth(method = "glm", method.args = list(family = "binomial"))
+
+# ## but none of the plots (with just degree) are that compelling
+# ## wide 95% CI for Female Breeders and prev male nonbreeder degree
+# nm_FC %>% filter(Sex=="F" & season_breeder=="breeder") %>%
+#   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
+#                               puuv_ifa=="1" ~ 1)) %>%
+#   ggplot(aes(x=prev_mnb.deg, y=puuv_ifa)) +
+#   geom_point() +
+#   geom_smooth(method = "glm", method.args = list(family = "binomial"))
+
+# ## ONLY TWO infected male nonbreeders
+# nm_FC %>% filter(Sex=="M" & season_breeder=="nonbreeder") %>%
+#   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
+#                               puuv_ifa=="1" ~ 1)) %>%
+#   ggplot(aes(x=prev_mnb.deg, y=puuv_ifa)) +
+#   geom_point() +
+#   geom_smooth(method = "glm", method.args = list(family = "binomial"))
+# 
+# ## ONLY FOUR infected male nonbreeders
 # nm_FC %>% filter(Sex=="F" & season_breeder=="nonbreeder") %>%
+#   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
+#                               puuv_ifa=="1" ~ 1)) %>%
+#   ggplot(aes(x=prev_fnb.deg, y=puuv_ifa)) +
+#   geom_point() +
+#   geom_smooth(method = "glm", method.args = list(family = "binomial"))
+# 
+# ## ONLY TWO infected male nonbreeders
+# nm_FC %>% filter(Sex=="M" & season_breeder=="nonbreeder") %>%
 #   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
 #                               puuv_ifa=="1" ~ 1)) %>%
 #   ggplot(aes(x=prev_fnb.deg, y=puuv_ifa)) +
@@ -659,6 +704,8 @@ mod_FD <- glmer(puuv_ifa ~ prev_mb.deg:Sex:season_breeder + prev_mnb.deg:Sex:sea
                     prev_month_num + Previous_Network_Size + Year + (1|site),
                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
                   family=binomial, data=nm_FD)
+summary(mod_FD)
+
 ## RESULTS:
   # (Male increases)
   # (nonbreeder (strongly) decreases-ie nearly no nonbreeders infected?)
@@ -668,21 +715,40 @@ mod_FD <- glmer(puuv_ifa ~ prev_mb.deg:Sex:season_breeder + prev_mnb.deg:Sex:sea
   # Female breeder: male breeder deg corr with less likely 0.29 to be infected (p=0.015)
   # Female breeder: female breeder deg corr with 4.26 more likely to be infected (p=0.005)
 
-nm_FD %>% filter(Sex=="F" & season_breeder=="breeder") %>%
+# #EXPLORE: not terribly compelling
+# nm_FD %>% 
+#   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
+#                               puuv_ifa=="1" ~ 1)) %>%
+#   ggplot(aes(x=explore, y=puuv_ifa)) +
+#   geom_point() +
+#   geom_smooth(method = "glm", method.args = list(family = "binomial"))
+
+plot1 <- nm_FD %>% filter(Sex=="F" & season_breeder=="breeder") %>%
   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
                               puuv_ifa=="1" ~ 1)) %>%
   ggplot(aes(x=prev_fb.deg, y=puuv_ifa)) +
   geom_point() +
-  geom_smooth(method = "glm", method.args = list(family = "binomial"))
+  geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+  labs(title="Adult Females: Previous Adult Female Degree")+
+  xlab("Previous Adult Female Degree") +
+  ylab("PUUV Infection Status (IFA)")
 
 # ehh wide CI
-nm_FD %>% filter(Sex=="F" & season_breeder=="breeder") %>%
+plot2 <- nm_FD %>% filter(Sex=="F" & season_breeder=="breeder") %>%
   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
                               puuv_ifa=="1" ~ 1)) %>%
   ggplot(aes(x=prev_mb.deg, y=puuv_ifa)) +
   geom_point() +
-  geom_smooth(method = "glm", method.args = list(family = "binomial"))
+  geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+  labs(title="Adult Females: Previous Adult Male Degree")+
+  xlab("Previous Adult Male Degree") +
+  ylab("PUUV Infection Status (IFA)")
 
+library(cowplot)
+png(filename = "FD_prev.fb-mb.deg_forFemaleBreeders.png",
+    width=10, height=5, units="in", res=600)
+plot_grid(plot2, plot1, labels="AUTO")
+dev.off()
 
 
 ######## pretty OUTPUT MODEL SUMMARY #########
@@ -701,31 +767,3 @@ mod_FD %>% tbl_regression(exponentiate = TRUE,
 # gt::gtsave(as_gt(gtsumm_mod), expand=30, here("regression_model.png"))
 
 ####### end output model summary #########
-
-
-
-
-
-
-
-
-
-
-
-#nm_UF - some models are bad, some at least didn't throw errors, mod_breeds is the least bad
-summary(mod_breeds) 
-#Female overlap with nonbreeders increases probability of infection
-
-#nm_FC - some of the breed and sb models had errors
-summary(mod_breedsb)
-#male breeder overlap with breeders increases prob infection
-#male nonbreeder overlap with breeders decreases prob infection
-#male nonbreeder overlap with nonbreeders increases prob infection
-
-#nm_FD - some failed to converge, a few errors
-summary(mod_sbsb)
-#explore has a negative effect on infection
-#F breeder overlap malebreeder decreases prob infection
-#M breeder overlap malebreeder (marginal) increases prob infection
-#F breeder overlap femalebreeder INCREASES prob infection (smallest pvalue)
-
