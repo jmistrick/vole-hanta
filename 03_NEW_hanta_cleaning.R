@@ -246,6 +246,35 @@ netmets_puuv <- readRDS(here("netmets_puuv_06.09.23.rds"))
 
 
 
+############################ DEGREE DISTRIBUTION BY TRT / YEAR###########################################
+
+trt_labs <- as_labeller(c(unfed_control="Unfed Control", 
+                          unfed_deworm="Unfed Deworm", 
+                          fed_control="Fed Control", 
+                          fed_deworm="Fed Deworm"))
+
+#increase axis ticks: https://stackoverflow.com/questions/11335836/increase-number-of-axis-ticks
+#add mean for each facet: https://stackoverflow.com/questions/44196384/how-to-produce-different-geom-vline-in-different-facets-in-r
+
+dataline <- netmets_puuv %>% group_by(year, trt) %>%
+  summarize(mean_x = mean(wt.deg))
+
+netmets_puuv %>%
+  ggplot(aes(x=wt.deg)) +
+  geom_histogram(stat="bin") +
+  geom_vline(data=dataline, aes(xintercept=mean_x, color=trt), linewidth=1, 
+             show.legend = FALSE) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 6)) +
+  facet_grid(trt~year, labeller=labeller(trt=trt_labs)) +
+  xlab("Weighted Degree") + ylab("Count")
+
+# netmets_puuv %>% filter(year=="2022") %>%
+#   ggplot(aes(x=wt.deg)) +
+#   geom_histogram(stat="bin") +
+#   scale_x_continuous(breaks = scales::pretty_breaks(n = 6)) +
+#   facet_grid(site~month) +
+#   xlab("Weighted Degree") + ylab("Count")
+############################################################################
 
 
 # ############### PUUV PREVALENCE PER SITE #########################
