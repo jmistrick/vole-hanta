@@ -586,6 +586,9 @@ plotResiduals(simulationOutput, data$prev_fnb.deg)
 ############################### BEST MODELS for each TREATMENT #################################
 
 #unfed control
+nm_UC <- nm_puuv_scaled %>% drop_na(prev_wt.deg) %>%
+  filter(Treatment=="unfed_control")
+
 mod_UC <- glmer(puuv_ifa ~ prev_b.deg:Sex + prev_nb.deg:Sex + 
                       Sex + explore +
                       Previous_Month + Previous_Network_Size + Year + (1|site),
@@ -595,33 +598,38 @@ mod_UC <- glmer(puuv_ifa ~ prev_b.deg:Sex + prev_nb.deg:Sex +
   # Males: previous breeder deg 1.64 increase infection (p=0.071)
   # Males: previous nonbreeder deg 0.05 decrease infection (p=0.071)
 
-plot1 <- nm_FC %>% filter(Sex=="M") %>%
+plot1 <- nm_UC %>% filter(Sex=="M") %>%
   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
                               puuv_ifa=="1" ~ 1)) %>%
   ggplot(aes(x=prev_nb.deg, y=puuv_ifa)) +
   geom_point() +
   geom_smooth(method = "glm", method.args = list(family = "binomial")) +
-  labs(title="Males: Previous Subadult Degree") +
-  xlab("Previous Subadult Degree") +
-  ylab("PUUV Infection Status (IFA)")
+  # labs(title="Males: Previous Non-Reproductive Vole Degree") +
+  xlab("Previous Non-Reproductive Vole Degree") +
+  ylab("PUUV Infection Status (IFA)") +
+  theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 10)))
 
-plot2 <- nm_FC %>% filter(Sex=="M") %>%
+plot2 <- nm_UC %>% filter(Sex=="M") %>%
   mutate(puuv_ifa = case_when(puuv_ifa=="0" ~ 0,
                               puuv_ifa=="1" ~ 1)) %>%
   ggplot(aes(x=prev_b.deg, y=puuv_ifa)) +
   geom_point() +
   geom_smooth(method = "glm", method.args = list(family = "binomial")) +
-  labs(title="Males: Previous Adult Degree")+
-  xlab("Previous Adult Degree") +
-  ylab("PUUV Infection Status (IFA)")
+  # labs(title="Males: Previous Reproductive Vole Degree")+
+  xlab("Previous Reproductive Vole Degree") +
+  ylab("PUUV Infection Status (IFA)") +
+  theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 10)))
 
 library(cowplot)
 png(filename = "UC_prev.b-nb.deg_forMales.png",
     width=10, height=5, units="in", res=600)
-plot_grid(plot1, plot2, labels="AUTO")
+plot_grid(plot1, plot2, labels="AUTO", label_size = 22)
 dev.off()
 
 #unfed deworm
+nm_UD <- nm_puuv_scaled %>% drop_na(prev_wt.deg) %>%
+  filter(Treatment=="unfed_deworm")
+
 mod_UD <- glmer(puuv_ifa ~ prev_b.deg:Sex + prev_nb.deg:Sex + 
                       Sex + season_breeder + explore +
                       Previous_Month + Previous_Network_Size + Year + (1|site),
@@ -637,7 +645,8 @@ nm_UD %>% filter(Sex=="F") %>%
                               puuv_ifa=="1" ~ 1)) %>%
   ggplot(aes(x=prev_nb.deg, y=puuv_ifa)) +
   geom_point() +
-  geom_smooth(method = "glm", method.args = list(family = "binomial"))
+  geom_smooth(method = "glm", method.args = list(family = "binomial")) +
+  labs(title="Infection probability of Females by previous nonbreeder degree")
 
 
 #fed control
@@ -698,6 +707,9 @@ mod_FC <- glmer(puuv_ifa ~ prev_mb.deg:Sex:season_breeder + prev_mnb.deg:Sex:sea
 
 
 #fed deworm
+nm_FD <- nm_puuv_scaled %>% drop_na(prev_wt.deg) %>%
+  filter(Treatment=="fed_deworm")
+
 mod_FD <- glmer(puuv_ifa ~ prev_mb.deg:Sex:season_breeder + prev_mnb.deg:Sex:season_breeder + 
                     prev_fb.deg:Sex:season_breeder + prev_fnb.deg:Sex:season_breeder + 
                     Sex + season_breeder + explore +
@@ -729,9 +741,10 @@ plot1 <- nm_FD %>% filter(Sex=="F" & season_breeder=="breeder") %>%
   ggplot(aes(x=prev_fb.deg, y=puuv_ifa)) +
   geom_point() +
   geom_smooth(method = "glm", method.args = list(family = "binomial")) +
-  labs(title="Adult Females: Previous Adult Female Degree")+
-  xlab("Previous Adult Female Degree") +
-  ylab("PUUV Infection Status (IFA)")
+  # labs(title="Reproductive Females: Previous Repro. Female Degree") +
+  xlab("Previous Reproductive Female Degree") +
+  ylab("PUUV Infection Status (IFA)") +
+  theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 10)))
 
 # ehh wide CI
 plot2 <- nm_FD %>% filter(Sex=="F" & season_breeder=="breeder") %>%
@@ -740,18 +753,19 @@ plot2 <- nm_FD %>% filter(Sex=="F" & season_breeder=="breeder") %>%
   ggplot(aes(x=prev_mb.deg, y=puuv_ifa)) +
   geom_point() +
   geom_smooth(method = "glm", method.args = list(family = "binomial")) +
-  labs(title="Adult Females: Previous Adult Male Degree")+
-  xlab("Previous Adult Male Degree") +
-  ylab("PUUV Infection Status (IFA)")
+  # labs(title="Reproductive Females: Previous Repro. Male Degree") +
+  xlab("Previous Reproductive Male Degree") +
+  ylab("PUUV Infection Status (IFA)") +
+  theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 10)))
 
 library(cowplot)
 png(filename = "FD_prev.fb-mb.deg_forFemaleBreeders.png",
     width=10, height=5, units="in", res=600)
-plot_grid(plot2, plot1, labels="AUTO")
+plot_grid(plot2, plot1, labels="AUTO", label_size = 22)
 dev.off()
 
 
-######## pretty OUTPUT MODEL SUMMARY #########
+####### pretty OUTPUT MODEL SUMMARY #########
 
 library(gtsummary) #https://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html
 
