@@ -19,16 +19,16 @@ rm(list = ls())
 
 ########### TO RUN THIS CODE IN THIS FILE ################
 # #clean 2021 data
-processingdata = "vole_capture_data_03.04.24.csv"
-WRdata= "week_recap_data_03.04.24.csv"
-yr=2021
-fulltrap_output = "fulltrap21_03.04.24.rds"
-
-#clean 2022 data
 # processingdata = "vole_capture_data_03.04.24.csv"
 # WRdata= "week_recap_data_03.04.24.csv"
-# yr=2022
-# fulltrap_output = "fulltrap22_03.04.24.rds"
+# yr=2021
+# fulltrap_output = "fulltrap21_03.04.24.rds"
+
+#clean 2022 data
+processingdata = "vole_capture_data_03.04.24.csv"
+WRdata= "week_recap_data_03.04.24.csv"
+yr=2022
+fulltrap_output = "fulltrap22_03.04.24.rds"
 #########################################################
 
 
@@ -354,7 +354,7 @@ fulltrap_output = "fulltrap21_03.04.24.rds"
   #############################  COMBINE AND CLEAN FULLTRAP DATA   ###############################################
 
   #compare columns and their classes - confirm everything matches
-  compare_df_cols(trap, recap)
+  # compare_df_cols(trap, recap)
 
   #combining trap and recap dataframes
   fulltrap <- bind_rows(trap, recap)
@@ -503,33 +503,32 @@ fulltrap_output = "fulltrap21_03.04.24.rds"
   ## some 2022 voles (at least 2) have sex=NA because we couldn't determine the correct sex
 
 
-  # ####################################################################################################
-  # 
-  # ######## NEW FOR VERSION TO BE PUBLISHED WITH JAE MANUSCRIPT #########
-  # ## the only data I can publish is the data necessary to run the code for the 2021 vole spatial analysis
-  # ## everything else must be removed
-  # 
-  # #remove columns not needed for vole spatial JAE analysis
-  # fulltrap <- fulltrap %>% select(!c(date_time, 
-  #                                    per, nip, preg, test,
-  #                                    head, mass, fate)) 
-  # 
+  ####################################################################################################
+
+  ######## NEW FOR VERSION TO BE PUBLISHED WITH JAE MANUSCRIPT #########
+  ## the only data I can publish is the data necessary to run the code for the 2021 vole spatial analysis
+  ## everything else must be removed
+
+  #remove columns not needed for vole spatial JAE analysis
+  fulltrap <- fulltrap %>% select(!c(date_time,
+                                     per, nip, preg, test,
+                                     head, mass, fate))
+
   # #save a version with sample ID for deworm analysis
   # ##THIS FILE IS NOT ON GIT OR DRYAD
   # saveRDS(fulltrap, file = here("fulltrap21_JAEfinal_withsampID.rds"))
-  # 
-  # #remove May data, voles without sex or repro data, not included in JAE spatial analysis (but might have been in deworm analysis)
-  # fulltrap <- fulltrap %>% 
-  #   select(!samp_id) %>% #remove sample ID
-  #   filter(month != "may") %>% #drop may data since not all sites had captures (may data not used in analysis)
-  #   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove May
-  #   drop_na(sex) %>% #remove animals with sex=NA (since we can't assign them a HR)
-  #   drop_na(season_breeder) #remove animals without season_breeder data (since we can't assign them a HR)
+
+  #remove May data, voles without sex or repro data, not included in JAE spatial analysis (but might have been in deworm analysis)
+  fulltrap <- fulltrap %>%
+    select(!samp_id) %>% #remove sample ID
+    filter(month != "may") %>% #drop may data since not all sites had captures (may data not used in analysis)
+    mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove May
+    drop_na(sex) %>% #remove animals with sex=NA (since we can't assign them a HR)
+    drop_na(season_breeder) #remove animals without season_breeder data (since we can't assign them a HR)
 
   
   
   
-
   #save fulltrap so I can pull it for other scripts
 
   # Save fulltrap to a rdata file
@@ -542,93 +541,3 @@ fulltrap_output = "fulltrap21_03.04.24.rds"
 
 
 # } #not currently running as a function
-
-
-
-
-
-
-
-
-
-
-
-
-
-########################################################################
-############# Extra stuff, just for reference and posterity ############
-########################################################################
-
-######### A few checks on the full data set to make sure everything is happy #########
-
-########## FOR 2022: TO FIND THE DISCREPANCIES BETWEEN FIRSTCAP and "NEW" column -- FIXED 5.4.23 ##############
-# check <- fulltrap22 %>% select(occ.sess, tag, new, firstcap) %>%
-#   drop_na(new) %>%
-#   mutate(new = case_when(new == "1" ~ 1,
-#                          new == "0" ~ 0)) %>%
-#   mutate(firstcap = case_when(firstcap == "1" ~ 1,
-#                          firstcap == "0" ~ 0)) %>%
-#   mutate(confirm = new + firstcap) %>%
-#   filter(confirm == 1)
-#
-# check2 <- fulltrap22 %>% filter(tag %in% check$tag) %>%
-#   group_by(tag) %>%
-#   arrange(occ.sess, .by_group = TRUE)
-
-# fulltrap22 <- fulltrap22 %>% select(!new)
-
-################################################
-
-#there are also a number of animals that were on the vole processing sheet twice because they were
-#captured, weighed, and released due to time issues (mostly occasion 6)
-#I need to find these animals and make sure they only have 0 or 1 for the first occasion they were seen,
-#not both if they have two processing entries
-
-#this is why I created the 'firstcap' column like above
-
-#confirm that firstcap is doing what we want...
-# first <- fulltrap %>% filter(firstcap == "1")
-# notfirst <- fulltrap %>% filter(firstcap == "0")
-# nrow(first) + nrow(notfirst)
-#06.01.22 -- yes, this is good, first + notfirst = fulltrap
-
-#NOTE: a few animals were processed TWICE in a single occasion - make sure things are working properly for them:
-
-#############################################
-
-#make sure there isn't any weird fuckery with animals on multiple grids or with multiple entries per occ.sess
-
-######## check to see how many unique grids animals are on ########
-# fulltrap %>%
-#   group_by(tag) %>%
-#   summarise(site_unique = n_distinct(site)) %>%
-#   filter(site_unique > 1) %>%
-#   ungroup()
-#if this is 0, you're good
-
-######## check to make sure animals don't have more entries than unique occ.sess combos ########
-# check <- fulltrap %>% group_by(tag) %>% summarise(count = length(occ.sess), unique = n_distinct(occ.sess))
-# check <- check %>% mutate(diff=unique-count) %>% filter(diff != 0)
-# tags <- check$tag
-# check <- fulltrap %>% filter(tag %in% tags) %>% arrange(tag, occ.sess)
-#if this is 0, you're good
-
-
-######## check to make sure everyone only has one sex #########
-######## these issues were checked and then resolved in the raw data #######
-# fulltrap$sex <- as.character(fulltrap$sex)
-# check <- fulltrap %>% group_by(tag) %>%
-#   summarise(n = unique(sex)) %>%
-#   filter(!is.na(n))
-#save the tag IDs of animals with multiple sexes
-# duplist <- as.vector(check$tag[duplicated(check$tag)])
-#how many?
-# length(duplist) #0 voles!
-# sexswaps <- fulltrap %>%
-#   filter(tag %in% duplist) %>%
-#   arrange(tag, occ.sess)
-#write as csv to share
-# write.csv(sexswaps, here("confirm_sex.csv"), row.names=FALSE)
-
-############################################### END CHECKING for FUCKERY #######################################################
-
