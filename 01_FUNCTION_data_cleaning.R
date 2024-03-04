@@ -1,16 +1,34 @@
+#code to clean data for "Vole Hanta" manuscript
+#run using R version 4.3.2 "Eye Holes"
+
+#now running on 03.04.24 versions of vole_capture_data and week_recap_data
+  #these versions are the most up-to-date with Katy Wearing's corrections to all 3 years of data (2021-2023)
+  #all updates were discussed and confirmed by Katy W, Jasmine Veitch, Janine M, and Dyess Harp in Jan/Feb 2024
+
+
+# load packages
+library(here)
+library(tidyverse)
+library(igraph)
+library(lubridate)
+library(janitor) 
+
+#clear environment
+rm(list = ls())
+
 
 ########### TO RUN THIS CODE IN THIS FILE ################
 # #clean 2021 data
-# processingdata = "vole_capture_data_05.04.23.csv"
-# WRdata= "week_recap_data_05.04.23.csv"
-# yr=2021
-# fulltrap_output = "fulltrap21_05.10.23.rds"
-#
-# #clean 2022 data
-# processingdata = "vole_capture_data_05.04.23.csv"
-# WRdata= "week_recap_data_05.04.23.csv"
+processingdata = "vole_capture_data_03.04.24.csv"
+WRdata= "week_recap_data_03.04.24.csv"
+yr=2021
+fulltrap_output = "fulltrap21_03.04.24.rds"
+
+#clean 2022 data
+# processingdata = "vole_capture_data_03.04.24.csv"
+# WRdata= "week_recap_data_03.04.24.csv"
 # yr=2022
-# fulltrap_output = "fulltrap22_05.10.23.rds"
+# fulltrap_output = "fulltrap22_03.04.24.rds"
 #########################################################
 
 
@@ -21,15 +39,14 @@
 ##          fulltrap_output = "filename.rds" - where to save the final 'fulltrap' file
 ## Output: fulltrap file with all the capture/WR data combined, plus new stuff calculated for desired year
 
-clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
+# clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
 
   ###############################   ENTRY & CLEANING VOLE CAPTURE DATA   ##################################
 
   #load data
   voledata <- read.csv(here(processingdata))
-  #june 3 2022 version - has corrected tag IDs and ambiguous sexes resolved (2021 season)
-  #oct 3 2022 version - has weirdly large head for 226016 removed (2021 season)
-  #feb 28 2023 version - has cleaned/updated PIT tags, vole sexes (2022 season)
+  #march 03 2024 version - has cleaned/updated PIT tags, vole sexes (2021 and 2022 season)
+    #cleaning was done on full 2021,2022,2023 capture data
 
   #clean names
   voledata <- voledata %>%
@@ -46,7 +63,7 @@ clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
            session = as.numeric(session),
            trap = as.character(trap),
            tag = as.character(tag),
-           samp_id = as.numeric(samp_id), #as.factor(samp_id),
+           samp_id = as.numeric(samp_id), #necessary to make sure leading 0s don't mess anything up
            sex = as.factor(sex),
            ow = as.factor(ow),
            per = as.factor(per),
@@ -71,7 +88,7 @@ clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
     #filter for just one year
     filter(year==yr) %>%
     #remove uusi 2022 data
-    filter(site!="uusi") %>%
+    filter(site!="uusi") %>% #only relevant for 2022
     #remove any animals without a trap location
     filter(!is.na(trap)) %>%
     #remove any animals without a tag id
@@ -193,9 +210,8 @@ clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
 
   #load the data
   wr_data <- read.csv(here(WRdata))
-  #june 3 2022 version is the most up-to-date, occ 5 and 6 have been checked and sexes corrected (2021 season)
-  #oct 3 2022 version only had updates to the processing data, wr data remained unchanged from june 28 version (2021 season)
-  #feb 28 2023 version has cleaned/updated PIT tags/vole sexes (2022 season)
+  #march 03 2024 version - has cleaned/updated PIT tags, vole sexes (2021 and 2022 season)
+  #cleaning was done on full 2021,2022,2023 capture data
 
   #several columns (sex, per, nip, preg, test, fate, handler) have "" or "not noted" --> change these to NA
   wr_data$sex[wr_data$sex == "not noted"] <- NA
@@ -238,7 +254,7 @@ clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
     #filter for desired year
     filter(year==yr) %>%
     #remove uusi data
-    filter(site!="uusi") %>%
+    filter(site!="uusi") %>% #only relevant for 2022
     filter(!is.na(trap)) %>% #remove NA trap
     filter(!is.na(tag)) #remove NA tag
 
@@ -337,8 +353,8 @@ clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
 
   #############################  COMBINE AND CLEAN FULLTRAP DATA   ###############################################
 
-  #compare columns and their classes
-  # compare_df_cols(trap, recap)
+  #compare columns and their classes - confirm everything matches
+  compare_df_cols(trap, recap)
 
   #combining trap and recap dataframes
   fulltrap <- bind_rows(trap, recap)
@@ -370,7 +386,6 @@ clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
     mutate(firstcap = factor(firstcap)) %>%
     ungroup()
   #this will record all the WRs as 0 as well
-
   ################ END FIRSTCAP/NEW ###########################
 
   # #in case igraph is already running, it masks "%--%" and the lubridate code won't run
@@ -385,58 +400,59 @@ clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
   #   mutate(days_known_alive = round( as.duration(first_seen %--% last_seen) / ddays(1) , digits=2) ) %>%
   #   ungroup()
 
-  #create caps_per_life column - number of captures of that individual
-  fulltrap <- fulltrap %>%
-    group_by(tag) %>%
-    mutate(caps_per_life = length(tag)) %>%
-    ungroup()
-  #count of number of unique traps per animal in lifetime
-  fulltrap <- fulltrap %>%
-    group_by(tag) %>%
-    mutate(traps_per_life = length(unique(trap))) %>%
-    relocate(traps_per_life, .after=caps_per_life) %>%
-    ungroup()
-  #create a RECAPPED column (binary - were you recapped or not)
-  fulltrap <- fulltrap %>%
-    group_by(tag) %>%
-    mutate(recapped = case_when(
-      caps_per_life == "1" ~ 0,
-      caps_per_life > "1" ~ 1)) %>%
-    mutate(recapped = factor(recapped)) %>%
-    relocate(recapped, .before=caps_per_life) %>%
-    ungroup()
+  # #create caps_per_life column - number of captures of that individual
+  # fulltrap <- fulltrap %>%
+  #   group_by(tag) %>%
+  #   mutate(caps_per_life = length(tag)) %>%
+  #   ungroup()
+  # #count of number of unique traps per animal in lifetime
+  # fulltrap <- fulltrap %>%
+  #   group_by(tag) %>%
+  #   mutate(traps_per_life = length(unique(trap))) %>%
+  #   relocate(traps_per_life, .after=caps_per_life) %>%
+  #   ungroup()
+  # #create a RECAPPED column (binary - were you recapped or not)
+  # fulltrap <- fulltrap %>%
+  #   group_by(tag) %>%
+  #   mutate(recapped = case_when(
+  #     caps_per_life == "1" ~ 0,
+  #     caps_per_life > "1" ~ 1)) %>%
+  #   mutate(recapped = factor(recapped)) %>%
+  #   relocate(recapped, .before=caps_per_life) %>%
+  #   ungroup()
 
   #season column
   fulltrap <- fulltrap %>%
     mutate(season = ifelse(month=="sept" | month=="oct", "fall", "summer")) %>%
     mutate(season = factor(season, levels=c("summer", "fall"))) %>%
     relocate(season, .after=month)
-  #caps_per_season
-  fulltrap <- fulltrap %>%
-    group_by(tag, season) %>%
-    mutate(caps_per_season = length(tag)) %>%
-    mutate(res = ifelse(caps_per_season >= 5, "resident", "nonresident")) %>% #add resident status
-    mutate(res = factor(res)) %>%
-    relocate(res, .after = traps_per_life) %>%
-    ungroup()
-  ################ NOTE: RESIDENT = 5 caps per SEASON -- NOT 5 caps per LIFE #############
-  #traps_per_season
-  fulltrap <- fulltrap %>%
-    group_by(tag, season) %>%
-    mutate(traps_per_season = length(unique(trap))) %>%
-    ungroup()
-
-  #caps_per_occ column - number of captures per occasion
-  fulltrap <- fulltrap %>%
-    group_by(occasion, tag) %>%
-    mutate(caps_per_occ = length(tag)) %>%
-    ungroup()
-  #count of number of unique traps per animal per occasion
-  ##n_distinct() is a dplyr wrapper for length(unique())
-  fulltrap <- fulltrap %>%
-    group_by(tag, occasion) %>%
-    mutate(traps_per_occ  = length(unique(trap))) %>%
-    ungroup()
+  
+  # #caps_per_season
+  # fulltrap <- fulltrap %>%
+  #   group_by(tag, season) %>%
+  #   mutate(caps_per_season = length(tag)) %>%
+  #   mutate(res = ifelse(caps_per_season >= 5, "resident", "nonresident")) %>% #add resident status
+  #   mutate(res = factor(res)) %>%
+  #   relocate(res, .after = traps_per_life) %>%
+  #   ungroup()
+  # ################ NOTE: RESIDENT = 5 caps per SEASON -- NOT 5 caps per LIFE #############
+  # #traps_per_season
+  # fulltrap <- fulltrap %>%
+  #   group_by(tag, season) %>%
+  #   mutate(traps_per_season = length(unique(trap))) %>%
+  #   ungroup()
+  # 
+  # #caps_per_occ column - number of captures per occasion
+  # fulltrap <- fulltrap %>%
+  #   group_by(occasion, tag) %>%
+  #   mutate(caps_per_occ = length(tag)) %>%
+  #   ungroup()
+  # #count of number of unique traps per animal per occasion
+  # ##n_distinct() is a dplyr wrapper for length(unique())
+  # fulltrap <- fulltrap %>%
+  #   group_by(tag, occasion) %>%
+  #   mutate(traps_per_occ  = length(unique(trap))) %>%
+  #   ungroup()
 
   #make a column (current_breeder) of "breeder"/"nonbreeder" based on 1 for per/nip/preg or test IN THAT CAPTURE
   #NAs persist
@@ -465,12 +481,12 @@ clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
     mutate(season_breeder = ifelse(season=="fall" & season_breeder_init=="nonbreeder" & ever_breeder=="breeder",
                                     "breeder", season_breeder_init)) %>%
     mutate(season_breeder = factor(season_breeder, levels=c("breeder", "nonbreeder"))) %>%
-    relocate(season_breeder, .after=season_breeder_init)
-    # select(!c(current_breeder, ever_breeder, season_breeder_init))
+    relocate(season_breeder, .after=season_breeder_init) %>%
+    select(!c(current_breeder, ever_breeder, season_breeder_init))
 
   #reorganize this unholy mess
   fulltrap <- fulltrap %>%
-    relocate(c(tag,samp_id,firstcap,trap,x,y,caps_per_occ,traps_per_occ), .after=helm_trt)
+    relocate(c(tag,samp_id,firstcap,trap,x,y), .after=helm_trt)
 
   #aight, I only want NAs if we DO NOT have that information at all in any way, so...
   #fill within an occasion for data not collected on WRs but collected during processing
@@ -487,29 +503,32 @@ clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
   ## some 2022 voles (at least 2) have sex=NA because we couldn't determine the correct sex
 
 
-  #############################################################
-  ## Body Condition Score Dropped (see 01_2021_data_cleaning)##
-  #############################################################
+  # ####################################################################################################
+  # 
+  # ######## NEW FOR VERSION TO BE PUBLISHED WITH JAE MANUSCRIPT #########
+  # ## the only data I can publish is the data necessary to run the code for the 2021 vole spatial analysis
+  # ## everything else must be removed
+  # 
+  # #remove columns not needed for vole spatial JAE analysis
+  # fulltrap <- fulltrap %>% select(!c(date_time, 
+  #                                    per, nip, preg, test,
+  #                                    head, mass, fate)) 
+  # 
+  # #save a version with sample ID for deworm analysis
+  # ##THIS FILE IS NOT ON GIT OR DRYAD
+  # saveRDS(fulltrap, file = here("fulltrap21_JAEfinal_withsampID.rds"))
+  # 
+  # #remove May data, voles without sex or repro data, not included in JAE spatial analysis (but might have been in deworm analysis)
+  # fulltrap <- fulltrap %>% 
+  #   select(!samp_id) %>% #remove sample ID
+  #   filter(month != "may") %>% #drop may data since not all sites had captures (may data not used in analysis)
+  #   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove May
+  #   drop_na(sex) %>% #remove animals with sex=NA (since we can't assign them a HR)
+  #   drop_na(season_breeder) #remove animals without season_breeder data (since we can't assign them a HR)
 
-  #based on some research on things, I've decided that 17.5g is the juv-subadult/adult cutoff
-  #not bad, September breeders are v tiny regardless, but changing the cutoff to 15g makes it better other months
-
-  # fulltrap <- fulltrap %>%
-  #   mutate(adult = ifelse(mass>17.5, "adult", "juv-subA")) %>%
-  #   relocate(adult, .after=sex)
-  #
-  # check <- fulltrap %>%
-  #   group_by(month, current_breeder, adult) %>%
-  #   summarise(n = length(tag))
-  #
-  # check %>%
-  #   drop_na( c(adult,current_breeder) ) %>%
-  #   ggplot(aes(x=current_breeder, y=n, fill=adult)) +
-  #   geom_bar(stat="identity", position="dodge") +
-  #   facet_wrap(~month)
-
-  ###############################################################################################
-
+  
+  
+  
 
   #save fulltrap so I can pull it for other scripts
 
@@ -522,7 +541,7 @@ clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
   #################### END ########################
 
 
-}
+# } #not currently running as a function
 
 
 
