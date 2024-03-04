@@ -1,24 +1,22 @@
 # Run using R version 4.3.2 "Eye Holes"
 
 # 01 - Factors influencing seasonal space use
-# Author: Janine Mistrick
+# Author: __MY NAME__
 # Associated Publication:
-# Effects of Food Supplementation and Helminth Removal on Space Use and Spatial Overlap
-# in Wild Rodent Populations.  
-  # Mistrick, Janine; Veitch, Jasmine; Kitchen, Shannon; Clague, Samuel; Newman, Brent; 
-  # Hall, Richard; Budischak, Sarah; Forbes, Kristian; Craft, Meggan
+# __________TITLE______________ 
+  # ___________AUTHORS_____________
 
 ### THIS CODE tests the how the relationship between the probability of capturing a vole in a trap and the
   # distance from the vole's seasonal centroid (ie space use) differs by sex, reproductive status, and treatment
-  # SEPARATELY in summer and fall seasons 2021
+  # SEPARATELY in summer and fall seasons 2021; summer and fall seasons 2022
 
   #RESULT: Yes, differences in space use exist by sex, repro status, treatment in both seasons
   #thus, it makes sense to calculate space use parameters separately per season/sex/repro/trt
 
 
 # load packages
-library(here) #v1.0.1
-library(tidyverse) #v2.0.0
+library(here) #VERSION ____
+library(tidyverse) #VERSION ____
 
 #clear environment
 rm(list = ls())
@@ -26,27 +24,30 @@ rm(list = ls())
 ##---------------- LOAD THE CAPTURE DATA ----------------------
 
 #load the 2021 fulltrap dataset as an R data file
-fulltrap <- readRDS(file = "fulltrap21_volecapturedata.rds")
+fulltrap <- readRDS(file = "fulltrap21_03.04.24.rds")
 
-#alternatively, load capture data from csv file and format data columns
-fulltrap <- read.csv(here("fulltrap21_volecapturedata.csv")) %>%
-  mutate(year = as.numeric(year),
-         month = factor(month, levels=c("june", "july", "aug", "sept", "oct")),
-         season = factor(season, levels=c("summer", "fall")),
-         occ.sess = as.character(occ.sess),
-         occasion = as.numeric(occasion),
-         session = as.numeric(session),
-         site = as.character(site),
-         trt = factor(trt, levels=c("unfed_control", "unfed_deworm", "fed_control", "fed_deworm")),
-         food_trt = factor(food_trt, levels=c("unfed", "fed")),
-         helm_trt = factor(helm_trt, levels=c("control", "deworm")),
-         tag = as.character(tag),
-         firstcap = factor(firstcap),
-         trap = as.character(trap),
-         x = as.numeric(x),
-         y = as.numeric(y),
-         sex = as.factor(sex),
-         season_breeder = factor(season_breeder, levels=c("breeder", "nonbreeder")))
+# #load the 2022 fulltrap dataset as an R data file
+# fulltrap <- readRDS(file = "fulltrap22_03.04.24.rds")
+
+# #alternatively, load capture data from csv file and format data columns
+# fulltrap <- read.csv(here("fulltrap21_volecapturedata.csv")) %>%
+#   mutate(year = as.numeric(year),
+#          month = factor(month, levels=c("june", "july", "aug", "sept", "oct")),
+#          season = factor(season, levels=c("summer", "fall")),
+#          occ.sess = as.character(occ.sess),
+#          occasion = as.numeric(occasion),
+#          session = as.numeric(session),
+#          site = as.character(site),
+#          trt = factor(trt, levels=c("unfed_control", "unfed_deworm", "fed_control", "fed_deworm")),
+#          food_trt = factor(food_trt, levels=c("unfed", "fed")),
+#          helm_trt = factor(helm_trt, levels=c("control", "deworm")),
+#          tag = as.character(tag),
+#          firstcap = factor(firstcap),
+#          trap = as.character(trap),
+#          x = as.numeric(x),
+#          y = as.numeric(y),
+#          sex = as.factor(sex),
+#          season_breeder = factor(season_breeder, levels=c("breeder", "nonbreeder")))
 
 #pull all the traps and their x, y coordinates, save as df with (trapID, x, y)
 traps <- fulltrap %>% group_by(trap) %>% slice(1) %>%
@@ -63,7 +64,7 @@ source(here("01-1_wanelik_farine_2022_functions.R"))
   # Wanelik, K.M., Farine, D.R. A new method for characterising shared space use networks using animal trapping data.
   # Behav Ecol Sociobiol 76, 127 (2022). https://doi.org/10.1007/s00265-022-03222-5
 
-#with minor additions by Janine Mistrick
+#with minor additions by __MY NAME__
 
 
 ##------------ CALCULATE DISTANCES FOR ALL VOLES, RUN GLM BY SEX, BREEDER, TRT ------------------------
@@ -142,8 +143,9 @@ source(here("01-1_wanelik_farine_2022_functions.R"))
   library(cowplot)
   library(ggtext)
 
-  sex.summer <- visreg(fit.summer, "Dist.log", by="sex", scale='response', rug=FALSE,
-                  gg=TRUE, overlay=TRUE) +
+    #by sex - 2021 season (pvalue is hard-coded because its so small)
+    sex.summer.21 <- visreg(fit.summer, "Dist.log", by="sex", scale='response', rug=FALSE,
+                            gg=TRUE, overlay=TRUE) +
       scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
       scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
       scale_color_manual(values=c("#f282a7", "#00d0ff")) +
@@ -156,18 +158,41 @@ source(here("01-1_wanelik_farine_2022_functions.R"))
             plot.margin = margin(t = 10, r = 20, b = 20, l = 10, unit = "pt")) +
       labs(x="Log Distance from Seasonal Centroid", y="Probability of Capture") +
       annotate(geom = "text", x=2.4, y=.85, size = 6,
-               label = paste("p < 0.001" )) +
+               label = paste("p <0.001")) +
       annotate(geom = "text", x=2.4, y=.9, size = 6,
                label = paste("OR =",
                              round( exp(coef(summary(fit.summer))[8,1]), digits=3) )) +
-    #https://github.com/pbreheny/visreg/issues/56 #color points by group separately
+      #https://github.com/pbreheny/visreg/issues/56 #color points by group separately
       geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=sex),
                  size=3, alpha=0.1, shape=16)
+    
+  # #by sex - 2022 season (pvalue is hard-coded because it's very small)
+  # sex.summer.22 <- visreg(fit.summer, "Dist.log", by="sex", scale='response', rug=FALSE,
+  #                 gg=TRUE, overlay=TRUE) +
+  #     scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
+  #     scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
+  #     scale_color_manual(values=c("#f282a7", "#00d0ff")) +
+  #     scale_fill_manual(values=c("#f282a750", "#00d0ff50")) +
+  #     theme_half_open() +
+  #     theme(legend.position = "bottom",
+  #           axis.title = element_text(size=18),
+  #           axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+  #           axis.text = element_text(size=16),
+  #           plot.margin = margin(t = 10, r = 20, b = 20, l = 10, unit = "pt")) +
+  #     labs(x="Log Distance from Seasonal Centroid", y="Probability of Capture") +
+  #     annotate(geom = "text", x=2.4, y=.85, size = 6,
+  #              label = paste("p < 0.001")) +
+  #     annotate(geom = "text", x=2.4, y=.9, size = 6,
+  #              label = paste("OR =",
+  #                            round( exp(coef(summary(fit.summer))[8,1]), digits=3) )) +
+  #   #https://github.com/pbreheny/visreg/issues/56 #color points by group separately
+  #     geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=sex),
+  #                size=3, alpha=0.1, shape=16)
 
 
-    #by repro
-    repro.summer <- visreg(fit.summer, "Dist.log", by="season_breeder", scale="response", rug=FALSE,
-                    gg=TRUE, overlay=TRUE) +
+    #by repro - 2021 season (pvalue is hard-coded because its so small)
+    repro.summer.21 <- visreg(fit.summer, "Dist.log", by="season_breeder", scale="response", rug=FALSE,
+                              gg=TRUE, overlay=TRUE) +
       scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
       scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
       scale_color_manual(values=c("#8b64b9", "#e8ac65")) +
@@ -180,17 +205,38 @@ source(here("01-1_wanelik_farine_2022_functions.R"))
             plot.margin = margin(t = 10, r = 10, b = 20, l = 20, unit = "pt")) +
       labs(x="Log Distance from Seasonal Centroid", y="Probability of Capture") +
       annotate(geom = "text", x=2.4, y=.85, size = 6,
-               label = paste("p < 0.001")) +
+               label = paste("p <0.001")) +
       annotate(geom = "text", x=2.4, y=.9, size = 6,
                label = paste("OR =",
                              round( exp(coef(summary(fit.summer))[9,1]), digits=3) )) +
       geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=season_breeder),
                  size=3, alpha=0.15, shape=16)
+    
+    # #by repro - 2022 season (pvalue is hard-coded because it's very small)
+    # repro.summer.22 <- visreg(fit.summer, "Dist.log", by="season_breeder", scale="response", rug=FALSE,
+    #                 gg=TRUE, overlay=TRUE) +
+    #   scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
+    #   scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
+    #   scale_color_manual(values=c("#8b64b9", "#e8ac65")) +
+    #   scale_fill_manual(values=c("#8b64b950", "#e8ac6550")) +
+    #   theme_half_open() +
+    #   theme(legend.position = "bottom",
+    #         axis.title = element_text(size=18),
+    #         axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+    #         axis.text = element_text(size=16),
+    #         plot.margin = margin(t = 10, r = 10, b = 20, l = 20, unit = "pt")) +
+    #   labs(x="Log Distance from Seasonal Centroid", y="Probability of Capture") +
+    #   annotate(geom = "text", x=2.4, y=.85, size = 6,
+    #            label = paste("p < 0.001")) +
+    #   annotate(geom = "text", x=2.4, y=.9, size = 6,
+    #            label = paste("OR =",
+    #                          round( exp(coef(summary(fit.summer))[9,1]), digits=3) )) +
+    #   geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=season_breeder),
+    #              size=3, alpha=0.15, shape=16)
 
-
-    #by food
-    food.summer <- visreg(fit.summer, "Dist.log", by="food_trt", scale='response', rug=FALSE,
-                   gg=TRUE, overlay=TRUE) +
+    #by food - 2021 season (pvalue is hard-coded because its so small)
+    food.summer.21 <- visreg(fit.summer, "Dist.log", by="food_trt", scale='response', rug=FALSE,
+                          gg=TRUE, overlay=TRUE) +
       scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
       scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
       scale_color_manual(values=c("#794624", "#68b63e")) +
@@ -203,12 +249,35 @@ source(here("01-1_wanelik_farine_2022_functions.R"))
             plot.margin = margin(t = 20, r = 20, b = 10, l = 10, unit = "pt")) +
       labs(x="Log Distance from Seasonal Centroid", y="Probability of Capture") +
       annotate(geom = "text", x=2.4, y=.85, size = 6,
-               label = paste("p < 0.001")) +
+               label = paste("p <0.001")) +
       annotate(geom = "text", x=2.4, y=.9, size = 6,
                label = paste("OR =",
                              round( exp(coef(summary(fit.summer))[10,1]), digits=3) )) +
       geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=food_trt),
                  size=3, alpha=0.15, shape=16)
+
+    # #by food - 2022 season
+    # food.summer <- visreg(fit.summer, "Dist.log", by="food_trt", scale='response', rug=FALSE,
+    #                gg=TRUE, overlay=TRUE) +
+    #   scale_y_continuous(expand = expansion(mult=c(0.01,0.01))) + #controls extra white space on axes (cowplot vignette)
+    #   scale_x_continuous(expand = expansion(mult=c(0.01,0.01))) +
+    #   scale_color_manual(values=c("#794624", "#68b63e")) +
+    #   scale_fill_manual(values=c("#79462450", "#68b63e50")) +
+    #   theme_half_open() +
+    #   theme(legend.position = "bottom",
+    #         axis.title = element_text(size=18),
+    #         axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 0)),
+    #         axis.text = element_text(size=16),
+    #         plot.margin = margin(t = 20, r = 20, b = 10, l = 10, unit = "pt")) +
+    #   labs(x="Log Distance from Seasonal Centroid", y="Probability of Capture") +
+    #   annotate(geom = "text", x=2.4, y=.85, size = 6,
+    #            label = paste("p =",
+    #                          round( coef(summary(fit.summer))[10,4], digits=3) )) +
+    #   annotate(geom = "text", x=2.4, y=.9, size = 6,
+    #            label = paste("OR =",
+    #                          round( exp(coef(summary(fit.summer))[10,1]), digits=3) )) +
+    #   geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=food_trt),
+    #              size=3, alpha=0.15, shape=16)
 
 
     #by worms
@@ -234,11 +303,17 @@ source(here("01-1_wanelik_farine_2022_functions.R"))
       geom_point(data=matrix_dists_obs, aes(x=Dist.log, y=Det.obs, color=helm_trt),
                  size=3, alpha=0.1, shape=16)
 
-    #generate figure
-    png(filename="SUPP_Fig_S4.png", height=12, width=16, units="in", res=600)
-    plot_grid(sex.summer, repro.summer, food.summer, worms.summer,
+    #generate 2021 figure
+    png(filename="space_useGLM_summer2021.png", height=12, width=16, units="in", res=600)
+    plot_grid(sex.summer.21, repro.summer.21, food.summer.21, worms.summer,
               labels="AUTO", nrow=2)
     dev.off()
+    
+    # #generate 2022 figure
+    # png(filename="space_useGLM_summer2022.png", height=12, width=16, units="in", res=600)
+    # plot_grid(sex.summer.22, repro.summer.22, food.summer, worms.summer,
+    #           labels="AUTO", nrow=2)
+    # dev.off()
 
 
 ##-----------------------------------------------------------------------------------------------------
@@ -411,10 +486,15 @@ worms.fall <- visreg(fit.fall, "Dist.log", by="helm_trt", scale='response', rug=
              size=3, alpha=0.1, shape=16)
 
 
-#generate figure
-png(filename="SUPP_Fig_S5.png", height=12, width=16, units="in", res=600)
+#generate 2021 figure
+png(filename="space_useGLM_fall2021.png", height=12, width=16, units="in", res=600)
 plot_grid(sex.fall, repro.fall, food.fall, worms.fall, labels="AUTO", nrow=2)
 dev.off()
+
+# #generate 2022 figure
+# png(filename="space_useGLM_fall2022.png", height=12, width=16, units="in", res=600)
+# plot_grid(sex.fall, repro.fall, food.fall, worms.fall, labels="AUTO", nrow=2)
+# dev.off()
 
 
 
@@ -424,21 +504,39 @@ dev.off()
 
 library(gtsummary) #https://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html
 
+#summary table 2021 summer
 fit.summer %>% tbl_regression(exponentiate = TRUE,
-                                pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
-      bold_p(t = 0.10) %>%
-      bold_labels() %>%
-      italicize_levels() %>%
-  gtsummary::as_tibble() %>%
-  write.csv(here("SUPP_Table_S5.csv"))
-
-fit.fall %>% tbl_regression(exponentiate = TRUE,
                               pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
-      bold_p(t = 0.10) %>%
-      bold_labels() %>%
-      italicize_levels() %>% #stop here to get HTML output in RStudio
+  bold_p(t = 0.10) %>%
+  bold_labels() %>%
+  italicize_levels() %>%
   gtsummary::as_tibble() %>%
-  write.csv(here("SUPP_Table_S6.csv"))
+  write.csv(here("space_useGLM_TABLE_summer2021.csv"))
+#summary table 2021 fall
+fit.fall %>% tbl_regression(exponentiate = TRUE,
+                            pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
+  bold_p(t = 0.10) %>%
+  bold_labels() %>%
+  italicize_levels() %>% #stop here to get HTML output in RStudio
+  gtsummary::as_tibble() %>%
+  write.csv(here("space_useGLM_TABLE_fall2021.csv"))
+
+# #summary table 2022 summer
+# fit.summer %>% tbl_regression(exponentiate = TRUE,
+#                                 pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
+#       bold_p(t = 0.10) %>%
+#       bold_labels() %>%
+#       italicize_levels() %>%
+#   gtsummary::as_tibble() %>%
+#   write.csv(here("space_useGLM_TABLE_summer2022.csv"))
+# #summary table 2022 fall
+# fit.fall %>% tbl_regression(exponentiate = TRUE,
+#                               pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
+#       bold_p(t = 0.10) %>%
+#       bold_labels() %>%
+#       italicize_levels() %>% #stop here to get HTML output in RStudio
+#   gtsummary::as_tibble() %>%
+#   write.csv(here("space_useGLM_TABLE_fall2022.csv"))
 
 
 ##### GLM model diagnostics ######
@@ -446,23 +544,23 @@ fit.fall %>% tbl_regression(exponentiate = TRUE,
 # #https://rpubs.com/benhorvath/glm_diagnostics
 # plot(density(resid(fit.summer, type='pearson')))
 # plot(density(resid(fit.fall, type='pearson')))
-#
+# 
 # plot(density(rstandard(fit.summer, type='pearson')))
 # plot(density(rstandard(fit.fall, type='pearson')))
-#
+# 
 # plot(density(resid(fit.summer, type='deviance')))
 # plot(density(resid(fit.fall, type='deviance')))
-#
+# 
 # plot(density(rstandard(fit.summer, type='deviance')))
 # plot(density(rstandard(fit.fall, type='deviance')))
-#
+# 
 # library(statmod)
 # plot(density(qresid(fit.summer)))
 # plot(density(qresid(fit.fall)))
-#
+# 
 # par(mfrow=c(1,2))
 # plot(density(matrix_dists_obs$Det.obs), main='M_0 y_hat')
 # lines(density(predict(fit.fall, type='response')), col='red')
-#
+# 
 # qqnorm(statmod::qresid(fit.summer)); qqline(statmod::qresid(fit.summer))
 # qqnorm(statmod::qresid(fit.fall)); qqline(statmod::qresid(fit.fall))
