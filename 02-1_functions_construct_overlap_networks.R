@@ -1,12 +1,10 @@
 # Run using R version 4.3.2 "Eye Holes"
 
 # 02-1 - Functions to construct spatial overlap networks
-# Author: Janine Mistrick
+# Author: __MY NAME__
 # Associated Publication:
-# Effects of Food Supplementation and Helminth Removal on Space Use and Spatial Overlap
-# in Wild Rodent Populations.  
-  # Mistrick, Janine; Veitch, Jasmine; Kitchen, Shannon; Clague, Samuel; Newman, Brent; 
-  # Hall, Richard; Budischak, Sarah; Forbes, Kristian; Craft, Meggan
+# __TITLE__  
+  # __AUTHORS__
 
 # This code provides the functions necessary to run the code in 02_construct_spatial_overlap_networks
 # and to estimate parameters describing bank vole space use, construct spatial overlap networks representing
@@ -456,9 +454,10 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
 
   ##---------------- LOAD THE DATA ----------------------
 
-  #load, clean the fulltrap dataset
+  #load, clean the fulltrap dataset - add columns for sts and sb
   fulltrap <- data %>%
-    unite("sts", season, trt, sex, remove=FALSE) #add sts column to match params_summary
+    unite("sts", season, trt, sex, remove=FALSE) %>% #add sts (season,treatment,sex) column to match params_summary
+    unite("sb", sex, season_breeder, remove=FALSE) #add sb (sex, breeding status) column for degree by functional group
 
   # load the network data
   overlap_network_list <- readRDS(here(networks_file))
@@ -495,16 +494,16 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       adjmatscaled <-ifelse(adjmat>0.01,1,0)
       inet_bin01 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
 
-      #and for SUPPLEMENT, a lil sensitivity testing
-      adjmatscaled <-ifelse(adjmat>0.05,1,0)
-      inet_bin05 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
-
-      adjmatscaled <-ifelse(adjmat>0.001,1,0)
-      inet_bin001 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
-
-      adjmatscaled <-ifelse(adjmat>0.005,1,0)
-      inet_bin005 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
-      ##end sensitivity testing##
+      # #and for SUPPLEMENT, a lil sensitivity testing
+      # adjmatscaled <-ifelse(adjmat>0.05,1,0)
+      # inet_bin05 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
+      # 
+      # adjmatscaled <-ifelse(adjmat>0.001,1,0)
+      # inet_bin001 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
+      # 
+      # adjmatscaled <-ifelse(adjmat>0.005,1,0)
+      # inet_bin005 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
+      # ##end sensitivity testing##
 
       ids <- get.vertex.attribute(inet, "name") #tag ids for all the animals on the grid
       month <- rep(names(overlap_network_list[[i]])[j],length(ids)) #capture month
@@ -519,12 +518,85 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       #binary degree (number of overlaps)
       site[[j]]$bin.01.deg <- igraph::degree(inet_bin01)
 
-      site[[j]]$bin.05.deg <- igraph::degree(inet_bin05)
-      site[[j]]$bin.001.deg <- igraph::degree(inet_bin001)
-      site[[j]]$bin.005.deg <- igraph::degree(inet_bin005)
+      # site[[j]]$bin.05.deg <- igraph::degree(inet_bin05)
+      # site[[j]]$bin.001.deg <- igraph::degree(inet_bin001)
+      # site[[j]]$bin.005.deg <- igraph::degree(inet_bin005)
 
       #number of nodes (voles) in the network
       site[[j]]$n.node <- rep(igraph::gorder(inet), length(ids))
+      
+      ### FOR ASSORTATIVITY - igraph doesn't do it with weighted degree - see code using assortnet in separate script
+      
+      
+      #####-------------- calculating sex- and repro-specific degree measures -----------------------
+      
+      ###### Calculate Male-degree, Female-degree #########
+      
+      ###### Calculate Breeder-degree, Nonbreeder-degree #########
+      
+      #make a (new) network from the adj matrix
+      g <- graph_from_adjacency_matrix(adjmat, mode="directed", weighted=TRUE, diag = FALSE)
+      #technically, our adj matrix is symmetrical so the network is undirected,
+      #BUT because I want count the number of ties going in/out from a given node,
+      #So I need to have all the 'out' ties listed in one column of the edgelist (so effectively a directed edgelist)
+      #So for these purposes, I built a directed network (but edge weights are symmetrical)
+      
+      #subset metadata
+      metadata <- fulltrap %>% #starts with fulltrap, need to get down to a 'traits' version
+        filter(site==site.id & month==month.id) %>%
+        group_by(tag) %>% slice(1)  #one entry per vole per month
+      #   drop_na(sex) %>% #didn't build networks with animals with sex=NA
+      #   drop_na(season_breeder) #didn't build networks with animals with season_breeder=NA
+      # ###dropping both sex and season_breeder = NA should clean up sb so there are no NAs
+      
+      #set "sex" as a vertex attribute
+      g <- set.vertex.attribute(graph=g, name="sex", index=V(g), value=metadata$sex)
+      #set "breeder" as a vertex attribute
+      g <- set.vertex.attribute(graph=g, name="breeder", index=V(g), value=metadata$season_breeder)
+      #set "sb" as vertex attribute (sb=season, breeder)
+      g <- set.vertex.attribute(graph=g, name="sb", index=V(g), value=metadata$sb)
+      #save vectors
+      # focal_sex <- get.vertex.attribute(g, "sex") #female is 1, male is 2
+      # focal_breed <- get.vertex.attribute(g, "breeder") #breeder is 1, nonbreeder is 2
+      focal_id <- get.vertex.attribute(g, "name") #this isn't strictly necessary, just to make sure the focal vole is correct
+      
+      ## code from Matt Michalska-Smith for male strength/female strength
+      sex_to <- get.vertex.attribute(g, "sex")[get.edgelist(g, names=FALSE)[,2]]
+      #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
+      degree_to_M <- strength(g, mode="out", weights=((sex_to == "M")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT" (the "to" individual)
+      degree_to_F <- strength(g, mode="out", weights=((sex_to == "F")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
+      
+      ## code from Matt M-S for breeder/nonbreeder strength
+      breed_to <- get.vertex.attribute(g, "breeder")[get.edgelist(g, names=FALSE)[,2]]
+      #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
+      degree_to_b <- strength(g, mode="out", weights=((breed_to == "breeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT" (the "to" individual)
+      degree_to_nb <- strength(g, mode="out", weights=((breed_to == "nonbreeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
+      
+      ## code from Matt M-S for sb strength across 4 pairings
+      sb_to <- get.vertex.attribute(g, "sb")[get.edgelist(g, names=FALSE)[,2]]
+      #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
+      degree_to_mb <- strength(g, mode="out", weights=((sb_to == "M_breeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT" (the "to" individual)
+      degree_to_mnb <- strength(g, mode="out", weights=((sb_to == "M_nonbreeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
+      degree_to_fb <- strength(g, mode="out", weights=((sb_to == "F_breeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
+      degree_to_fnb <- strength(g, mode="out", weights=((sb_to == "F_nonbreeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
+      
+      #network metrics to calculate
+      site[[j]]$focal_id <- focal_id #not necessary, but a good check to make sure I'm pulling info for the right vole
+      # site[[j]]$focal_sex <- focal_sex #not necessary, but a good check to make sure I'm pulling info for the right vole
+      #degree by sex
+      site[[j]]$F.deg <- degree_to_F
+      site[[j]]$M.deg <- degree_to_M
+      #degree by breeding status
+      site[[j]]$b.deg <- degree_to_b
+      site[[j]]$nb.deg <- degree_to_nb
+      #degree by sex-breedingstatus
+      site[[j]]$mb.deg <- degree_to_mb
+      site[[j]]$mnb.deg <- degree_to_mnb
+      site[[j]]$fb.deg <- degree_to_fb
+      site[[j]]$fnb.deg <- degree_to_fnb
+      
+      #####------------------ end sex- and repro- degree measures -------------------
+      
 
     }
 
@@ -537,8 +609,11 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
   names(wt_net_mets_list) <- names(overlap_network_list)
 
   #rename the sublist items (months) for each site
+  #accounting for the fact that most sites have 5 months of data but some have 4 (1 or 2 sites in 2022)
   for(i in 1:length(wt_net_mets_list)){
-            names(wt_net_mets_list[[i]]) <- c("june", "july", "aug", "sept", "oct")
+    ifelse( length(wt_net_mets_list[[i]]) == 5,
+            names(wt_net_mets_list[[i]]) <- c("june", "july", "aug", "sept", "oct"),
+            names(wt_net_mets_list[[i]]) <- c("july", "aug", "sept", "oct") )
   }
 
 
