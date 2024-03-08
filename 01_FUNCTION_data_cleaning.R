@@ -18,17 +18,17 @@ rm(list = ls())
 
 
 ########### TO RUN THIS CODE IN THIS FILE ################
-#clean 2021 data
-processingdata = "vole_capture_data_03.04.24.csv"
-WRdata= "week_recap_data_03.04.24.csv"
-yr=2021
-fulltrap_output = "fulltrap21_03.04.24.rds"
-
-# #clean 2022 data
+# #clean 2021 data
 # processingdata = "vole_capture_data_03.04.24.csv"
 # WRdata= "week_recap_data_03.04.24.csv"
-# yr=2022
-# fulltrap_output = "fulltrap22_03.04.24.rds"
+# yr=2021
+# fulltrap_output = "fulltrap21_03.04.24.rds"
+
+#clean 2022 data
+processingdata = "vole_capture_data_03.04.24.csv"
+WRdata= "week_recap_data_03.04.24.csv"
+yr=2022
+fulltrap_output = "fulltrap22_03.04.24.rds"
 #########################################################
 
 
@@ -507,32 +507,18 @@ fulltrap_output = "fulltrap21_03.04.24.rds"
 
   ####################################################################################################
 
-  ######## NEW FOR VERSION TO BE PUBLISHED WITH JAE MANUSCRIPT #########
-  ## the only data I can publish is the data necessary to run the code for the 2021 vole spatial analysis
-  ## everything else must be removed
+  ##### FOR PUBLICATION: skim down the data file to as little data as necessary for analyses
 
-  #remove columns not needed for vole-hanta analysis
-  fulltrap <- fulltrap %>% select(!c(per, nip, preg, test,
-                                     head, mass, fate))
-
-  # #save a version with sample ID for deworm analysis
-  # ##THIS FILE IS NOT ON GIT OR DRYAD
-  # saveRDS(fulltrap, file = here("fulltrap21_JAEfinal_withsampID.rds"))
-
-  #remove May data, voles without sex or repro data, not included in JAE spatial analysis (but might have been in deworm analysis)
+  #remove data that is not used for vole-hanta analysis
   fulltrap <- fulltrap %>%
-    select(!samp_id) %>% #remove sample ID
+    select(!c(per, nip, preg, test, head, mass, fate)) %>% #remove data columns not needed for analysis
     filter(month != "may") %>% #drop may data since not all sites had captures (may data not used in analysis)
-    mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels, remove May
+    mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels
     drop_na(sex) %>% #remove animals with sex=NA (since we can't assign them a HR)
     drop_na(season_breeder) #remove animals without season_breeder data (since we can't assign them a HR)
 
   
-  
-  
-  #save fulltrap so I can pull it for other scripts
-
-  # Save fulltrap to a rdata file
+  #save fulltrap to an rdata file so I can pull it for other scripts
   saveRDS(fulltrap, file = here(fulltrap_output))
 
   # Restore fulltrap from the rdata file
