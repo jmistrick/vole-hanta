@@ -18,17 +18,17 @@ rm(list = ls())
 
 
 ########### TO RUN THIS CODE IN THIS FILE ################
-# #clean 2021 data
-# processingdata = "vole_capture_data_03.04.24.csv"
-# WRdata= "week_recap_data_03.04.24.csv"
-# yr=2021
-# fulltrap_output = "fulltrap21_03.04.24.rds"
-
-#clean 2022 data
+#clean 2021 data
 processingdata = "vole_capture_data_03.04.24.csv"
 WRdata= "week_recap_data_03.04.24.csv"
-yr=2022
-fulltrap_output = "fulltrap22_03.04.24.rds"
+yr=2021
+fulltrap_output = "fulltrap21_03.04.24.rds"
+
+# #clean 2022 data
+# processingdata = "vole_capture_data_03.04.24.csv"
+# WRdata= "week_recap_data_03.04.24.csv"
+# yr=2022
+# fulltrap_output = "fulltrap22_03.04.24.rds"
 #########################################################
 
 
@@ -400,17 +400,19 @@ fulltrap_output = "fulltrap22_03.04.24.rds"
   #   mutate(days_known_alive = round( as.duration(first_seen %--% last_seen) / ddays(1) , digits=2) ) %>%
   #   ungroup()
 
-  # #create caps_per_life column - number of captures of that individual
-  # fulltrap <- fulltrap %>%
-  #   group_by(tag) %>%
-  #   mutate(caps_per_life = length(tag)) %>%
-  #   ungroup()
-  # #count of number of unique traps per animal in lifetime
-  # fulltrap <- fulltrap %>%
-  #   group_by(tag) %>%
-  #   mutate(traps_per_life = length(unique(trap))) %>%
-  #   relocate(traps_per_life, .after=caps_per_life) %>%
-  #   ungroup()
+  ## KEEPING traps_per_life and caps_per_life for exploratoriness measurement later
+  
+  #create caps_per_life column - number of captures of that individual
+  fulltrap <- fulltrap %>%
+    group_by(tag) %>%
+    mutate(caps_per_life = length(tag)) %>%
+    ungroup()
+  #count of number of unique traps per animal in lifetime
+  fulltrap <- fulltrap %>%
+    group_by(tag) %>%
+    mutate(traps_per_life = length(unique(trap))) %>%
+    relocate(traps_per_life, .after=caps_per_life) %>%
+    ungroup()
   # #create a RECAPPED column (binary - were you recapped or not)
   # fulltrap <- fulltrap %>%
   #   group_by(tag) %>%
@@ -509,9 +511,8 @@ fulltrap_output = "fulltrap22_03.04.24.rds"
   ## the only data I can publish is the data necessary to run the code for the 2021 vole spatial analysis
   ## everything else must be removed
 
-  #remove columns not needed for vole spatial JAE analysis
-  fulltrap <- fulltrap %>% select(!c(date_time,
-                                     per, nip, preg, test,
+  #remove columns not needed for vole-hanta analysis
+  fulltrap <- fulltrap %>% select(!c(per, nip, preg, test,
                                      head, mass, fate))
 
   # #save a version with sample ID for deworm analysis
