@@ -612,8 +612,8 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
   #accounting for the fact that most sites have 5 months of data but some have 4 (1 or 2 sites in 2022)
   for(i in 1:length(wt_net_mets_list)){
     ifelse( length(wt_net_mets_list[[i]]) == 5,
-            names(wt_net_mets_list[[i]]) <- c("june", "july", "aug", "sept", "oct"),
-            names(wt_net_mets_list[[i]]) <- c("july", "aug", "sept", "oct") )
+            names(wt_net_mets_list[[i]]) <- c("June", "July", "August", "September", "October"),
+            names(wt_net_mets_list[[i]]) <- c("July", "August", "September", "October") )
   }
 
 
