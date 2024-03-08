@@ -60,6 +60,10 @@ centroids <- readRDS(here("monthly_centroids21.rds")) %>%
 
 ######## PLOT MULTIPLE SITES ACROSS MONTHS #############
 
+#create custom color scale
+mycolors <- c("F_breeder"="#c9184a", "F_nonbreeder"="#ff758f", "M_breeder"="#023e8a", "M_nonbreeder"="#a3d5ff")
+
+
 #create list to store generated graphs (1 per month per site)
 graph_list <- list()
 
@@ -109,8 +113,10 @@ for(i in 1:length(overlap_network_list)) {
       ## Matt Michalska-Smith is a lifesaver <3
       # geom_node_label(aes(label=name)) + # optional, add node labels to the plot
       geom_node_point(aes(fill=sb), color="black", pch=21, size=6) +
-      scale_fill_manual(values=c("#c9184a", "#ff758f", "#023e8a", "#a3d5ff"),
+      scale_fill_manual(values=mycolors, 
                         labels=c("Female Breeder", "Female Nonbreeder", "Male Breeder", "Male Nonbreeder")) +
+      # scale_fill_manual(values=c("#c9184a", "#ff758f", "#023e8a", "#a3d5ff"),
+      #                   labels=c("Female Breeder", "Female Nonbreeder", "Male Breeder", "Male Nonbreeder")) +
       scale_edge_width(range=c(0,3), guide="none") + #scale edge width by weight
       scale_edge_colour_gradient(low="#F0F0F0", high="#000000", guide="none") + # set the (gray)scale, remove legend
       theme_void() +
@@ -151,13 +157,14 @@ for(i in 1:length(graph_list)){
                                           legend.box.margin=margin(20,0,0,0))
   
   #save the composite figure as .png
-  ggsave(filename = paste("spatial_overlap_", "fxnlgrp_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
+  ggsave(filename = paste("spatial_overlap_", "A_fxnlgrp_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
          plot=last_plot(),
          width=20, height=4.5, units="in",
          dpi=300)
   
 }
 
+### NOTE! The labels for the colors in the legend will be wrong if all four fxnl groups are not represented in the graph
 
 ######################################
 
@@ -180,6 +187,8 @@ for(i in 1:length(graph_list)){
 #          dpi=300)
 #   
 # }
+
+### NOTE! The labels for the colors in the legend will be wrong if all four fxnl groups are not represented in the graph
 
 
 ######################################
