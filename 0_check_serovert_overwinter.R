@@ -1,3 +1,5 @@
+# ARCHIVED on 3.12.24 - no longer needed in analysis
+
 ### code to check things in '03_NEW_hanta_cleaning'
 #looking at the voles that seroconvert 1-0 and overwintered animals
 #JM removed 6.9.23
