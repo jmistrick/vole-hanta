@@ -28,7 +28,7 @@ rm(list = ls())
 processingdata = "vole_capture_data_03.04.24.csv"
 WRdata= "week_recap_data_03.04.24.csv"
 yr=2022
-fulltrap_output = "fulltrap22_03.04.24.rds"
+# fulltrap_output = "fulltrap22_03.04.24.rds"
 #########################################################
 
 
@@ -507,6 +507,12 @@ fulltrap_output = "fulltrap22_03.04.24.rds"
 
   ####################################################################################################
 
+  # ## FIRST! for data purposes, save fulltrap_ALL_03.04.24.rds to get counts of all captured voles
+  #   ## including May captures, captures with sex=NA or repro=NA
+  # 
+  # saveRDS(fulltrap, file=here("fulltrap22_ALL_03.04.24.rds"))
+  
+  
   ##### FOR PUBLICATION: skim down the data file to as little data as necessary for analyses
 
   #remove data that is not used for vole-hanta analysis
