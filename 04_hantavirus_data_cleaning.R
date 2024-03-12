@@ -241,50 +241,38 @@ rm(list = ls())
 #load netmets_puuv
 netmets_puuv <- readRDS(here("netmets_puuv_03.08.24.rds"))
 
-#entries per year (in netmets_puuv)
-y1 <- netmets_puuv %>% filter(year=="2021") #1029 in 2021
-n_distinct(y1$tag) #683 unique voles
-y2 <- netmets_puuv %>% filter(year=="2022") #1061 in 2022
-n_distinct(y2$tag) #694 unique voles
 
-#entries per year (in netmets --> ie those used in the networks that don't have PUUV data)
-nrow(netmets21) #1129 entries in 2021
-n_distinct(netmets21$tag) #742 voles in 2021
-nrow(netmets22) #1131 entries in 2022
-n_distinct(netmets22$tag) #744 voles in 2022
+#### summarize some quick counts
 
-
-
-
-## a random thing: Sept 20, 2023 ##
-## Kris wanted me to report in the VoleHanta ms the number of animals
-    ##captured, recapped etc before detailing the subset of the data used for the study
-## so that would be the fulltrap dataset
-#EXCLUDING MAY
-fulltrap21 <- readRDS(file="fulltrap21_03.04.24.rds") 
-fulltrap22 <- readRDS(file="fulltrap22_03.04.24.rds")
-fulltrap21.22 <- rbind(fulltrap21, fulltrap22) 
-#4148 capture events (including WR) across June-Oct 2021 and 2022
-
-#2239 captures with samples collected
-samples <- fulltrap21.22 %>% drop_na(samp_id) %>% group_by(samp_id) %>% slice(1)
-#1460 unique voles were sampled
-n_distinct(samples$tag)
-#911 unique voles were sampled and recapped
-samp_recaps <- samples %>% filter(caps_per_life>1) %>% group_by(tag) %>% slice(1)
-
-# #INCLUDING MAY
-# fulltrap21 <- readRDS(file="../vole-spatial-v2/fulltrap21_05.10.23.rds") #go up a level from current wd, then down to file
-# fulltrap22 <- readRDS(file="../vole-spatial-v2/fulltrap22_05.10.23.rds")
-# fulltrap21.22 <- rbind(fulltrap21, fulltrap22) #4286 capture events across 2021 and 2022
-# #4286 capture entries (includes WR)
+# #entries per year (in netmets_puuv)
+# y1 <- netmets_puuv %>% filter(year=="2021") #1029 in 2021
+# n_distinct(y1$tag) #683 unique voles
+# y2 <- netmets_puuv %>% filter(year=="2022") #1061 in 2022
+# n_distinct(y2$tag) #694 unique voles
 # 
+# #entries per year (in netmets --> ie those used in the networks that don't have PUUV data)
+# nrow(netmets21) #1129 entries in 2021
+# n_distinct(netmets21$tag) #742 voles in 2021
+# nrow(netmets22) #1131 entries in 2022
+# n_distinct(netmets22$tag) #744 voles in 2022
+
+
+# ## a random thing: Sept 20, 2023 ##
+# ## Kris wanted me to report in the VoleHanta ms the number of animals
+#     ##captured, recapped etc before detailing the subset of the data used for the study
+# 
+# ## so that would be the fulltrap_ALL_03.04.24 dataset
+# #INCLUDING MAY, INCLUDING sex/repro=NA
+# fulltrap21_ALL <- readRDS(file="fulltrap21_ALL_03.04.24.rds") 
+# fulltrap22_ALL <- readRDS(file="fulltrap22_ALL_03.04.24.rds")
+# fulltrap21.22_ALL <- rbind(fulltrap21_ALL, fulltrap22_ALL) 
+# #4286 capture events (including WR) across MAY-Oct 2021 and 2022
+# samples <- fulltrap21.22_ALL %>% drop_na(samp_id) %>% group_by(samp_id) %>% slice(1)
 # #2309 captures with samples collected
-# samples <- fulltrap21.22 %>% drop_na(samp_id) %>% group_by(samp_id) %>% slice(1)
-# #1487 unique voles were sampled
 # n_distinct(samples$tag)
+# #1487 unique voles were sampled
+# samp_recaps <- samples %>% filter(caps_per_life>1) %>% group_by(tag) %>% slice(1)
 # #924 unique voles were sampled and recapped
-# samp_recaps <- samples %>% filter(recapped == "1") %>% group_by(tag) %>% slice(1)
 
 
 
@@ -295,20 +283,20 @@ samp_recaps <- samples %>% filter(caps_per_life>1) %>% group_by(tag) %>% slice(1
 
 ########### a new thing wee hours of 7/7/23 trying to finish this damn ms ###############
 
-#how many times is the "previous network position" NOT from the immediately prior month?
-
-df <- netmets_puuv %>% group_by(tag) %>% mutate(month.n = case_when(month=="june" ~ 1,
-                                                              month=="july" ~ 2,
-                                                              month=="aug" ~ 3,
-                                                              month=="sept" ~ 4,
-                                                              month=="oct" ~ 5)) %>%
-  mutate(dif = month.n - lag(month.n)) %>%
-  drop_na(prev_wt.deg)
-#713 data entries with a current PUUV informed by previous network position
-
-dfsmol <- df %>% filter(dif > 1) #25 times we had to pull from an earlier month that wasn't the previous one
-
-### 25/713 = 3.5%
+# #how many times is the "previous network position" NOT from the immediately prior month?
+# 
+# df <- netmets_puuv %>% group_by(tag) %>% mutate(month.n = case_when(month=="june" ~ 1,
+#                                                               month=="july" ~ 2,
+#                                                               month=="aug" ~ 3,
+#                                                               month=="sept" ~ 4,
+#                                                               month=="oct" ~ 5)) %>%
+#   mutate(dif = month.n - lag(month.n)) %>%
+#   drop_na(prev_wt.deg)
+# #713 data entries with a current PUUV informed by previous network position
+# 
+# dfsmol <- df %>% filter(dif > 1) #25 times we had to pull from an earlier month that wasn't the previous one
+# 
+# ### 25/713 = 3.5%
 
 #########################################################################################
 
@@ -320,8 +308,19 @@ dfsmol <- df %>% filter(dif > 1) #25 times we had to pull from an earlier month 
 
 ############################ DEGREE DISTRIBUTION BY TRT / YEAR ###########################################
 
+#no figures used in manuscript or supplement, summary values reported in results
 
-######### DOES THIS GET USED AT ALL ?? #############
+netmets_puuv %>% group_by(year, trt) %>%
+  summarise(mean=mean(wt.deg),
+            sd=sd(wt.deg))
+
+# netmets_puuv %>% group_by(year, month, trt) %>%
+#   summarise(mean=mean(wt.deg),
+#             sd=sd(wt.deg))
+
+netmets_puuv %>% group_by(year) %>%
+  summarise(mean=mean(wt.deg),
+            sd=sd(wt.deg))
 
 trt_labs <- as_labeller(c(unfed_control="Unfed Control", 
                           unfed_deworm="Unfed Deworm", 
@@ -334,6 +333,7 @@ trt_labs <- as_labeller(c(unfed_control="Unfed Control",
 dataline <- netmets_puuv %>% group_by(year, trt) %>%
   summarize(mean_x = mean(wt.deg))
 
+#weighted degree by trt, year bars for mean
 netmets_puuv %>%
   ggplot(aes(x=wt.deg)) +
   geom_histogram(stat="bin") +
@@ -343,11 +343,20 @@ netmets_puuv %>%
   facet_grid(trt~year, labeller=labeller(trt=trt_labs)) +
   xlab("Weighted Degree") + ylab("Count")
 
+# #weighted degree by trt, month
+# #2021 data
+# netmets_puuv %>% filter(year=="2021") %>%
+#   ggplot(aes(x=wt.deg)) +
+#   geom_histogram(stat="bin") +
+#   scale_x_continuous(breaks = scales::pretty_breaks(n = 6)) +
+#   facet_grid(trt~month) +
+#   xlab("Weighted Degree") + ylab("Count")
+# #2022 data
 # netmets_puuv %>% filter(year=="2022") %>%
 #   ggplot(aes(x=wt.deg)) +
 #   geom_histogram(stat="bin") +
 #   scale_x_continuous(breaks = scales::pretty_breaks(n = 6)) +
-#   facet_grid(site~month) +
+#   facet_grid(trt~month) +
 #   xlab("Weighted Degree") + ylab("Count")
 ############################################################################
 
