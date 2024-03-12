@@ -330,14 +330,14 @@ trt_labs <- as_labeller(c(unfed_control="Unfed Control",
 #increase axis ticks: https://stackoverflow.com/questions/11335836/increase-number-of-axis-ticks
 #add mean for each facet: https://stackoverflow.com/questions/44196384/how-to-produce-different-geom-vline-in-different-facets-in-r
 
-dataline <- netmets_puuv %>% group_by(year, trt) %>%
+meandata <- netmets_puuv %>% group_by(year, trt) %>%
   summarize(mean_x = mean(wt.deg))
 
 #weighted degree by trt, year bars for mean
 netmets_puuv %>%
   ggplot(aes(x=wt.deg)) +
   geom_histogram(stat="bin") +
-  geom_vline(data=dataline, aes(xintercept=mean_x, color=trt), linewidth=1, 
+  geom_vline(data=meandata, aes(xintercept=mean_x, color=trt), linewidth=1, 
              show.legend = FALSE) +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 6)) +
   facet_grid(trt~year, labeller=labeller(trt=trt_labs)) +
@@ -359,6 +359,8 @@ netmets_puuv %>%
 #   facet_grid(trt~month) +
 #   xlab("Weighted Degree") + ylab("Count")
 ############################################################################
+
+
 
 
 ############### PUUV PREVALENCE PER SITE #########################
@@ -437,161 +439,6 @@ netmets_puuv %>%
 
 
 
-#########################################################################################################
-########### HOW does previous month's network position affect (likelihood of?) seroconversion ###########
-
-# ## last month's degree, this month's PUUV status
-# ## grouped by year and treatment (so replicate sites are combined)
-# netmets_puuv_serov <- netmets_puuv %>%
-#   drop_na(serovert)
-# 
-# # #119 entries of a previously-infected animal being captured again as infected
-# # check <- netmets_puuv %>% filter(prev_curr_puuv=="1-1")
-# 
-# #summarize number of 0-0 vs number of 0-1 by year_trt
-# netmets_puuv_serov %>%
-#   unite(yr_trt, year, trt, remove=FALSE) %>%
-#   ungroup() %>% group_by(yr_trt) %>%
-#   #alternatively: to look at by year# group_by(year) %>%
-#   summarise(n_00 = sum(serovert=="0"),
-#             n_01 = sum(serovert=="1"))
-# ## RESULT: There are A LOT MORE animals that don't seroconvert, than those that do
-# ## in 2021 - have two IFA results for 276 (37 seroconversions)
-# ## in 2022 - have two IFA results for 318 (32 seroconversions)
-# ## can the model / analysis even be fair/reasonable if we're comparing two things that are so off-weight?
-# 
-# # ## GGally to see a matrix of histograms / boxplots of variables by each other
-# # ## just to get a sense of trends / distributions / check for weirdness
-# # library(GGally)
-# # data <- netmets_puuv_serov %>% ungroup() %>% select(c(wt.deg, puuv_ifa, month, trt, year))
-# # ggpairs(data)
-# 
-# mod_degs <- glmer(serovert ~ prev_wt.deg:sex +
-#                     sex + season_breeder + explore + 
-#                     trt + prev_month + prev_n.node + year + (1|site),
-#                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
-#                   family=binomial, data=netmets_puuv_serov)
-# 
-# mod_degb <- glmer(serovert ~ prev_wt.deg:season_breeder + 
-#                     sex + season_breeder + explore + 
-#                     trt + prev_month + prev_n.node + year + (1|site),
-#                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
-#                   family=binomial, data=netmets_puuv_serov)
-# 
-# mod_degsb <- glmer(serovert ~ prev_wt.deg:sex:season_breeder + 
-#                      sex + season_breeder + explore + 
-#                      trt + prev_month + prev_n.node + year + (1|site),
-#                    control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
-#                    family=binomial, data=netmets_puuv_serov)
-# 
-# 
-# 
-# mod_sexs <- glmer(serovert ~ prev_M.deg:sex + prev_F.deg:sex + 
-#              sex + season_breeder + explore + 
-#              trt + prev_month + prev_n.node + year + (1|site),
-#              control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
-#              family=binomial, data=netmets_puuv_serov)
-# 
-# mod_sexb <- glmer(serovert ~ prev_M.deg:season_breeder + prev_F.deg:season_breeder + 
-#                     sex + season_breeder + explore + 
-#                     trt + prev_month + prev_n.node + year + (1|site),
-#                   control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
-#                   family=binomial, data=netmets_puuv_serov)
-# 
-# mod_sexsb <- glmer(serovert ~ prev_M.deg:sex:season_breeder + prev_F.deg:sex:season_breeder + 
-#              sex + season_breeder + explore + 
-#              trt + prev_month + prev_n.node + year + (1|site),
-#              control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
-#            family=binomial, data=netmets_puuv_serov)
-# # summary(mod_sexsb)
-# 
-# mod_breeds <- glmer(serovert ~ prev_b.deg:sex + prev_nb.deg:sex + 
-#                    sex + season_breeder + explore + 
-#                    trt + prev_month + prev_n.node + year + (1|site),
-#                    control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
-#                  family=binomial, data=netmets_puuv_serov)
-# 
-# mod_breedb <- glmer(serovert ~ prev_b.deg:season_breeder + prev_nb.deg:season_breeder + 
-#                       sex + season_breeder + explore + 
-#                       trt + prev_month + prev_n.node + year + (1|site),
-#                     control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
-#                     family=binomial, data=netmets_puuv_serov)
-# 
-# mod_breedsb <- glmer(serovert ~ prev_b.deg:sex:season_breeder + prev_nb.deg:sex:season_breeder + 
-#                    sex + season_breeder + explore + 
-#                    trt + prev_month + prev_n.node + year + (1|site),
-#                    control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)), 
-#                  family=binomial, data=netmets_puuv_serov)
-# # summary(mod_breeds)
-# 
-# mod_sbs <- glmer(serovert ~ prev_mb.deg:sex + prev_mnb.deg:sex +
-#                       prev_fb.deg:sex + prev_fnb.deg:sex +
-#                       sex + season_breeder + explore +
-#                       trt + prev_month + prev_n.node + year + (1|site),
-#                     control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
-#                     family=binomial, data=netmets_puuv_serov)
-# 
-# mod_sbb <- glmer(serovert ~ prev_mb.deg:season_breeder + prev_mnb.deg:season_breeder +
-#                       prev_fb.deg:season_breeder + prev_fnb.deg:season_breeder +
-#                       sex + season_breeder + explore +
-#                       trt + prev_month + prev_n.node + year + (1|site),
-#                     control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
-#                     family=binomial, data=netmets_puuv_serov)
-# 
-# mod_sbsb <- glmer(serovert ~ prev_mb.deg:sex:season_breeder + prev_mnb.deg:sex:season_breeder +
-#                       prev_fb.deg:sex:season_breeder + prev_fnb.deg:sex:season_breeder +
-#                       sex + season_breeder + explore +
-#                       trt + prev_month + prev_n.node + year + (1|site),
-#                     control=glmerControl(optimizer="bobyqa",optCtrl=list(maxfun=2e5)),
-#                     family=binomial, data=netmets_puuv_serov)
-# 
-# AIC(mod_degs, mod_degb, mod_degsb, 
-#     mod_sexs, mod_sexb, mod_sexsb, 
-#     mod_breeds, mod_breedb, mod_breedsb,
-#     mod_sbs, mod_sbb, mod_sbsb) #mod_sexs, mod_sexb, mod_sbs have similar - lowest AIC
-# 
-# 
-# #generate pretty table of regression coefs
-# # library(gtsummary)
-# mod_sbs %>% tbl_regression(exponentiate = TRUE,
-#                        pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
-#   bold_p(t = 0.10) %>%
-#   bold_labels() %>%
-#   italicize_levels()
-# 
-# 
-# ############# model diagnostics ############
-# #2 best-fit models are mod_sexs and mod_sbs
-# 
-# dat <- netmets_puuv_serov
-# 
-# #GLMM model diagnostics > https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
-# library(DHARMa)
-# #calculate residuals (then run diagnostics on these)
-# simulationOutput <- simulateResiduals(fittedModel = mod_sexs)
-# plot(simulationOutput) #qq plot and residual vs fitted
-# testDispersion(simulationOutput) #formal test for overdispersion
-# # testZeroInflation(simulationOutput) #formal test for zero inflation (common type of overdispersion)
-# 
-# plotResiduals(simulationOutput, dat$sex)
-# plotResiduals(simulationOutput, dat$season_breeder)
-# plotResiduals(simulationOutput, dat$explore)
-# plotResiduals(simulationOutput, dat$trt)
-# plotResiduals(simulationOutput, dat$Previous_Month)
-# plotResiduals(simulationOutput, dat$prev_n.node)
-# plotResiduals(simulationOutput, dat$year)
-# plotResiduals(simulationOutput, dat$prev_F.deg) 
-# plotResiduals(simulationOutput, dat$prev_M.deg)
-# plotResiduals(simulationOutput, dat$prev_b.deg)
-# plotResiduals(simulationOutput, dat$prev_nb.deg)
-# 
-# #### OVERALL: DHARMa look not amazing for both
-# 
-# 
-# 
-# #########################################################################################################
-
-
 
 
 
@@ -609,7 +456,7 @@ netmets_puuv_prevdeg <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
          Previous_M.degree = prev_M.deg,
          Previous_F.degree = prev_F.deg)
 
-## number of captures, indivdiual voles (captures is not double # voles because indivs capped 2x only get only entry)
+# # number of captures, individual voles (captures is not double # voles because indivs capped 2x only get only entry)
 # y1 <- netmets_puuv_prevdeg %>% filter(Year=="2021")
 # n_distinct(y1$tag)
 # y2 <- netmets_puuv_prevdeg %>% filter(Year=="2022")
