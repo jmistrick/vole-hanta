@@ -1,3 +1,5 @@
+#ARCHIVED THIS FILE on 3.12.24 - no longer used in analysis
+
 ####### these are the Mann-Whitney u tests doing pairwise comparison on wt.deg, M.deg, F.deg between infected/uninfected animals
 ### this code used to be in "03_NEW_hanta_cleaning" until 6.9.23 when Janine decided all those pairwise comparisons probs needed to go elsewhere
 ## this code takes 5ever to run in R - code was run on MSI to get through all the iterations
