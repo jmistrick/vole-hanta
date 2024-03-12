@@ -308,16 +308,20 @@ netmets_puuv <- readRDS(here("netmets_puuv_03.08.24.rds"))
 
 ############################ DEGREE DISTRIBUTION BY TRT / YEAR ###########################################
 
-#no figures used in manuscript or supplement, summary values reported in results
+#no figures used in manuscript or supplement, summary values of mean+sd wtdeg reported in results
 
+#mean wtdeg across ALL months, by treatment in 2021, 2022
 netmets_puuv %>% group_by(year, trt) %>%
   summarise(mean=mean(wt.deg),
             sd=sd(wt.deg))
 
+#mean wtdeg by month, trt, in 2021 and 2022
 # netmets_puuv %>% group_by(year, month, trt) %>%
 #   summarise(mean=mean(wt.deg),
 #             sd=sd(wt.deg))
 
+#### THESE VALUES REPORTED in manuscript
+#mean wtdeg across ALL trt, ALL months in 2021, 2022
 netmets_puuv %>% group_by(year) %>%
   summarise(mean=mean(wt.deg),
             sd=sd(wt.deg))
@@ -343,6 +347,31 @@ netmets_puuv %>%
   facet_grid(trt~year, labeller=labeller(trt=trt_labs)) +
   xlab("Weighted Degree") + ylab("Count")
 
+##alternatively to see each month for a trt
+library(ggridges)
+library(cowplot)
+png(filename = "FIG_wt.deg_by_month-trt.png", width=10, height=8, units="in", res=300)
+netmets_puuv %>%
+  mutate(month.rev = factor(month, levels=c("oct", "sept", "aug", "july", "june"))) %>%
+  ggplot(aes(x=wt.deg, y=month.rev, fill=trt, color=trt)) +
+  geom_density_ridges(stat = "binline", alpha=0.5,
+                      scale=0.9, rel_min_height = 0.001) +
+  geom_vline(data=meandata, aes(xintercept=mean_x, color=trt), linewidth=1, 
+             show.legend = FALSE) +
+  facet_grid(trt~year, labeller=labeller(trt=trt_labs)) +
+  labs(x="Weighted Degree") +
+  scale_y_discrete(labels=c("june" = "June", "july" = "July",
+                            "aug" = "Aug", "sept" = "Sept", "oct" = "Oct")) +
+  theme_half_open() + panel_border() + background_grid() +
+  theme(legend.position = "none",
+        axis.title.x = element_text(size=18),
+        axis.title.y = element_blank(),
+        axis.text = element_text(size=14),
+        strip.text.x = element_text(size=16),
+        strip.text.y = element_text(size=14))
+dev.off()
+
+
 # #weighted degree by trt, month
 # #2021 data
 # netmets_puuv %>% filter(year=="2021") %>%
@@ -359,10 +388,6 @@ netmets_puuv %>%
 #   facet_grid(trt~month) +
 #   xlab("Weighted Degree") + ylab("Count")
 ############################################################################
-
-
-
-
 
 
 
