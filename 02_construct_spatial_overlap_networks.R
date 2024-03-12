@@ -133,3 +133,115 @@ calculate_network_metrics(data=fulltrap22,
                           netmets_file = "network_metrics22.rds")
 #view output file:
 netmets22 <- readRDS(here("network_metrics22.rds"))
+
+
+####-----------------------------------------------------------------------------
+
+
+
+############################ DEGREE DISTRIBUTION BY TRT / YEAR ###########################################
+
+## INCLUDES ALL animals from networks 
+  #(ie 170 more than netmets_puuv because the voles that are lacking PUUV data are in the networks and are here)
+
+### LOAD INDIVIDUAL VOLE METADATA by year 
+fulltrap21 <- readRDS(file="fulltrap21_03.04.24.rds")
+fulltrap22 <- readRDS(file="fulltrap22_03.04.24.rds")
+
+fulltrap21.22 <- rbind(fulltrap21, fulltrap22) %>% 
+  group_by(year, month, tag) %>% slice(1) %>% #one entry per vole per month
+  select(year, site, trt, month, tag)
+
+### LOAD NETWORK METRICS data
+netmets21 <- readRDS(file="network_metrics21.rds") %>% mutate(year=as.numeric(2021))
+netmets22 <- readRDS(file="network_metrics22.rds") %>% mutate(year=as.numeric(2022))
+
+netmets21.22 <- rbind(netmets21, netmets22) %>% select(!focal_id) #drop duplicate PIT tag # column
+
+#combine METADATA and NETWORK METRICS
+netmets_full <- left_join(netmets21.22, fulltrap21.22, by=c("year", "site", "month", "tag")) %>%
+  mutate(site=as.factor(site),
+         year=as.factor(year),
+         month = as.factor(month),
+         month = factor(month, levels=c("june", "july", "aug", "sept", "oct")))
+
+### SUMMARISE VALUES FOR MAIN TEXT, Figure for supplement
+
+#mean wtdeg across ALL months, by treatment in 2021, 2022
+netmets_full %>% group_by(year, trt) %>%
+  summarise(mean=mean(wt.deg),
+            sd=sd(wt.deg))
+
+#mean wtdeg by month, trt, in 2021 and 2022
+# netmets_full %>% group_by(year, month, trt) %>%
+#   summarise(mean=mean(wt.deg),
+#             sd=sd(wt.deg))
+
+#### THESE VALUES REPORTED in manuscript
+#mean wtdeg across ALL trt, ALL months in 2021, 2022
+netmets_full %>% group_by(year) %>%
+  summarise(mean=mean(wt.deg),
+            sd=sd(wt.deg))
+
+trt_labs <- as_labeller(c(unfed_control="Unfed Control", 
+                          unfed_deworm="Unfed Deworm", 
+                          fed_control="Fed Control", 
+                          fed_deworm="Fed Deworm"))
+
+#increase axis ticks: https://stackoverflow.com/questions/11335836/increase-number-of-axis-ticks
+#add mean for each facet: https://stackoverflow.com/questions/44196384/how-to-produce-different-geom-vline-in-different-facets-in-r
+
+meandata <- netmets_full %>% group_by(year, trt) %>%
+  summarize(mean_x = mean(wt.deg))
+
+#weighted degree by trt, year bars for mean
+netmets_full %>%
+  ggplot(aes(x=wt.deg)) +
+  geom_histogram(stat="bin") +
+  geom_vline(data=meandata, aes(xintercept=mean_x, color=trt), linewidth=1, 
+             show.legend = FALSE) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 6)) +
+  facet_grid(trt~year, labeller=labeller(trt=trt_labs)) +
+  xlab("Weighted Degree") + ylab("Count")
+
+##alternatively to see each month for a trt
+library(ggridges)
+library(cowplot)
+png(filename = "FIG_wt.deg_by_month-trt.png", width=10, height=8, units="in", res=300)
+netmets_puuv %>%
+  mutate(month.rev = factor(month, levels=c("oct", "sept", "aug", "july", "june"))) %>%
+  ggplot(aes(x=wt.deg, y=month.rev, fill=trt, color=trt)) +
+  geom_density_ridges(stat = "binline", alpha=0.5,
+                      scale=0.9, rel_min_height = 0.001) +
+  geom_vline(data=meandata, aes(xintercept=mean_x, color=trt), linewidth=1, 
+             show.legend = FALSE) +
+  facet_grid(trt~year, labeller=labeller(trt=trt_labs)) +
+  labs(x="Weighted Degree") +
+  scale_y_discrete(labels=c("june" = "June", "july" = "July",
+                            "aug" = "Aug", "sept" = "Sept", "oct" = "Oct")) +
+  theme_half_open() + panel_border() + background_grid() +
+  theme(legend.position = "none",
+        axis.title.x = element_text(size=18),
+        axis.title.y = element_blank(),
+        axis.text = element_text(size=14),
+        strip.text.x = element_text(size=16),
+        strip.text.y = element_text(size=14))
+dev.off()
+
+
+# #weighted degree by trt, month
+# #2021 data
+# netmets_puuv %>% filter(year=="2021") %>%
+#   ggplot(aes(x=wt.deg)) +
+#   geom_histogram(stat="bin") +
+#   scale_x_continuous(breaks = scales::pretty_breaks(n = 6)) +
+#   facet_grid(trt~month) +
+#   xlab("Weighted Degree") + ylab("Count")
+# #2022 data
+# netmets_puuv %>% filter(year=="2022") %>%
+#   ggplot(aes(x=wt.deg)) +
+#   geom_histogram(stat="bin") +
+#   scale_x_continuous(breaks = scales::pretty_breaks(n = 6)) +
+#   facet_grid(trt~month) +
+#   xlab("Weighted Degree") + ylab("Count")
+############################################################################
