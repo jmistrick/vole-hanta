@@ -466,7 +466,7 @@ netmets_puuv_prevdeg <- netmets_puuv %>% drop_na(prev_wt.deg) %>%
 # ## at EEID, Megan Tomamichael suggested running model separately by trt to see if effects are washing out other things...
 #   #can see piecemealy how different treatment types affect prev degree affecting current infection status, but overall meh
 # dat_trt <- dat %>% filter(Treatment=="unfed_control")
-# mod <- glmer(puuv_ifa ~ Previous_M.degree:Sex + Previous_F.degree:Sex + Sex + 
+# mod <- glmer(puuv_ifa ~ Previous_M.degree:Sex + Previous_F.degree:Sex + Sex +
 #               Previous_Month + Previous_Network_Size + Year + (1|site),
 #              family=binomial, data=dat_trt)
 
