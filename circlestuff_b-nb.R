@@ -1,3 +1,6 @@
+#### THIS CODE WAS ARCHIVED ON 14 MARCH 2024 (Pi Day!)
+#### the necessary code from this file (for vole-hanta ms) was copied and renamed as '06_spaceuse_circles.R'
+
 ####### ------------ CriCkLES FOR BREEDERS / NON-BREEDERS -----------------------
 
 # load packages
