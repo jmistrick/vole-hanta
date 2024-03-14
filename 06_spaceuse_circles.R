@@ -17,7 +17,7 @@ rm(list = ls())
 #where the declining probability (P) of an individual being detected at a distance (d)
 #from the centroid of its home range is given by:
 
-P(d) = 1 / (1 + e^(-a-bd))
+# P(d) = 1 / (1 + e^(-a-bd))
 
 #where a describes the overall size of the home range
 #b describes the steepness of the edge of the home range
@@ -40,14 +40,25 @@ P(d) = 1 / (1 + e^(-a-bd))
 
 ####----------- LOAD DATA -----------------
 
-#params
-params21 <- readRDS(here("spaceuse_parameters21.rds"))
-params22 <- readRDS(here("spaceuse_parameters22.rds"))
+#a and b parameters for space use kernels
+params21 <- readRDS(here("spaceuse_parameters21.rds")) %>% mutate(year=2021)
+params22 <- readRDS(here("spaceuse_parameters22.rds")) %>% mutate(year=2022)
+
+#MONTHLY centroids
+centroids21 <- readRDS(here("monthly_centroids21.rds")) %>% rename(tag = Tag_ID)
+centroids22 <- readRDS(here("monthly_centroids22.rds")) %>% rename(tag = Tag_ID)
+
+#load fulltrap data - pull tag, month, site
+ft21 <- readRDS(here("fulltrap21_03.04.24.rds"))
+trapdata21 <- ft21 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
+  group_by(tag, month) %>% slice(1)
+
+ft22 <- readRDS(here("fulltrap22_03.04.24.rds"))
+trapdata22 <- ft22 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
+  group_by(tag, month) %>% slice(1)
 
 
-
-
-
+####--------------------------------------
 
 
 # ### ALL OF THIS goes basically into the figure below
@@ -105,8 +116,6 @@ params22 <- readRDS(here("spaceuse_parameters22.rds"))
 ### PLOT mean HR SIZE by functional group, trt, year ####
 ####### NEW FIGURE NOV 2023 jesus creepers and rice, why am I still working on this####
 #mean area each year by trt, sex, breed
-params21 <- params21 %>% mutate(year=2021)
-params22 <- params22 %>% mutate(year=2022)
 
 data <- rbind(params21, params22) %>%
   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
@@ -162,33 +171,22 @@ dev.off()
 
 
 
-#MONTHLY centroids
-centroids21 <- readRDS(here("monthly_centroids21.rds")) %>% rename(tag = Tag_ID)
-centroids22 <- readRDS(here("monthly_centroids22.rds")) %>% rename(tag = Tag_ID)
-
-#load fulltrap data - pull tag, month, site
-ft21 <- readRDS(here("fulltrap21_03.04.24.rds"))
-trapdat21 <- ft21 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
-  group_by(tag, month) %>% slice(1)
-
-ft22 <- readRDS(here("fulltrap22_03.04.24.rds"))
-trapdat22 <- ft22 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
-  group_by(tag, month) %>% slice(1)
 
 
 
 ####----------- CREATE 'CIRCLES' df for PLOTTING -----------------
 
-circles21 <- left_join(centroids21, trapdat21, by=c("tag", "month", "site")) %>%
+circles21 <- left_join(centroids21, trapdata21, by=c("tag", "month", "site")) %>%
   unite(stsb, season, trt, sex, season_breeder) %>% left_join(params21, by="stsb") %>%
-  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #remove may from factor
+  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #make sure month is a factor
   separate_wider_delim(stsb, delim="_", names=c("season", "food_trt", "helm_trt", "sex", "season_breeder")) %>%
   unite(trt, food_trt, helm_trt) %>%
+  unite(fxnl_grp, sex, season_breeder, remove=FALSE) %>%
   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b))
 
-circles22 <- left_join(centroids22, trapdat22, by=c("tag", "month", "site")) %>%
+circles22 <- left_join(centroids22, trapdata22, by=c("tag", "month", "site")) %>%
   unite(stsb, season, trt, sex, season_breeder) %>% left_join(params22, by="stsb") %>%
-  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #remove may from factor
+  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #make sure month is a factor
   separate_wider_delim(stsb, delim="_", names=c("season", "food_trt", "helm_trt", "sex", "season_breeder")) %>%
   unite(trt, food_trt, helm_trt) %>%
   unite(fxnl_grp, sex, season_breeder, remove=FALSE) %>%
@@ -273,13 +271,21 @@ names(circles22_list) <- site_names
 ####----------------------------END----------------------------------
 
 
+
 ####------------ PLOT [JUST CIRCLES] IN A LOOP (per YEAR)---------------------------
 
 library(gridExtra)
 
+#define colors for each fxnl group
+#because number of fxnl groups per plot varies, want to be sure that each group is always same color
+#https://stackoverflow.com/questions/17180115/manually-setting-group-colors-for-ggplot2
+fxnl.colors <- c(F_breeder="#c9184a", F_nonbreeder="#ffa9b9", M_breeder="#023e8a", M_nonbreeder="#a3d5ff")
+
+####------------------ for 2021 ---------------------------
+
 for(i in 1:length(circles21_list)) {
 
-  png(filename = paste("~ERRBODYcircles_monthlycentroids_", "rad0.01_", names(circles21_list)[[i]], "_2021", ".png", sep = ""),
+  png(filename = paste("circles_", "rad0.01_fxnl_", names(circles21_list)[[i]], "_2021", ".png", sep = ""),
       width=18 , height=5, units="in", res=600)
 
   p <- list()
@@ -291,19 +297,20 @@ for(i in 1:length(circles21_list)) {
     #plot
     p[[j]] <- data %>%
       ggplot() +
-      geom_point(aes(x=x, y=y, color=sex), show.legend=FALSE) +
+      geom_point(aes(x=x, y=y, color=fxnl_grp), show.legend=FALSE) +
       xlim(-1.5,13) + ylim(-1.5,13) +
-      geom_circle( aes(x0=x, y0=y, r=rad_0.01, fill=sex, linetype=season_breeder), alpha=0.5) +
-      scale_fill_manual(values=c("#f282a780", "#00d0ff80")) +
+      geom_circle( aes(x0=x, y0=y, r=rad_0.01, fill=fxnl_grp), alpha=0.5) +
+      scale_color_manual(values=fxnl.colors) +
+      scale_fill_manual(values=fxnl.colors) +
       geom_rect(aes(xmin = 0, xmax = 11, ymin = 0, ymax = 11),
                 fill=NA, alpha = 0.4, color = "#444444", linetype=2) +
       theme_void() +
-      theme(legend.position = "bottom",
+      theme(plot.title = element_text(size= 16, hjust = 0.5),
+            legend.position = "none",
             axis.ticks = element_blank(),
             axis.text  = element_blank(),
             axis.title = element_blank()) +
-      labs(title=paste(names(circles21_list[[i]])[j]),
-           fill="Sex") +
+      labs(title=paste(names(circles21_list[[i]])[j])) +
       coord_fixed()
 
   }
@@ -316,14 +323,10 @@ for(i in 1:length(circles21_list)) {
 
 ####------------------repeat for 2022---------------------------
 
-#define colors for each fxnl group
-#because number of fxnl groups per plot varies, want to be sure that each group is always same color
-#https://stackoverflow.com/questions/17180115/manually-setting-group-colors-for-ggplot2
-fxnl.colors <- c(F_breeder="#c9184a", F_nonbreeder="#ffa9b9", M_breeder="#023e8a", M_nonbreeder="#a3d5ff")
 
 for(i in 1:length(circles22_list)) {
 
-  png(filename = paste("ERRBODYcircles_", "rad0.01_fxnl_", names(circles22_list)[[i]], "_2022", ".png", sep = ""),
+  png(filename = paste("circles_", "rad0.01_fxnl_", names(circles22_list)[[i]], "_2022", ".png", sep = ""),
       width=18 , height=5, units="in", res=600)
 
   p <- list()
@@ -335,13 +338,19 @@ for(i in 1:length(circles22_list)) {
     #plot
     p[[j]] <- data %>%
       ggplot() +
-      geom_point(aes(x=x, y=y, color=fxnl_grp)) +
+      geom_point(aes(x=x, y=y, color=fxnl_grp), show.legend=FALSE) +
+      xlim(-1.5,13) + ylim(-1.5,13) +
       geom_circle( aes(x0=x, y0=y, r=rad_0.01, fill=fxnl_grp), alpha=0.5) +
-      scale_fill_manual(values=fxnl.colors) +
       scale_color_manual(values=fxnl.colors) +
+      scale_fill_manual(values=fxnl.colors) +
       geom_rect(aes(xmin = 0, xmax = 11, ymin = 0, ymax = 11),
-                fill=NA, alpha = 0.4, color = "black", linetype=2) +
-      theme(legend.position = "bottom") +
+                fill=NA, alpha = 0.4, color = "#444444", linetype=2) +
+      theme_void() +
+      theme(plot.title = element_text(size= 16, hjust = 0.5),
+            legend.position = "none",
+            axis.ticks = element_blank(),
+            axis.text  = element_blank(),
+            axis.title = element_blank()) +
       labs(title=paste(names(circles22_list[[i]])[j])) +
       coord_fixed()
 
