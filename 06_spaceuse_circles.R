@@ -1,4 +1,4 @@
-####### ------------ CriCkLES FOR BREEDERS / NON-BREEDERS -----------------------
+####### ------------ CONSTRUCT SPACE USE CIRCLES -----------------------
 
 # load packages
 library(here)
@@ -214,89 +214,6 @@ circles22 <- left_join(centroids22, trapdat22, by=c("tag", "month", "site")) %>%
 
 
 ####-------------------------------------------
-
-
-##########Janine 6.12 says: ########## THIS NEEDS TO BE UPDATED TO WHATER THE PUUV DATA IS THESE DAYS ####################
-
-# ########### THE FOLLOWING IS PULLED FROM THE HANTA CLEANING FILE AND EDITED TO INCLUDE NONBREEDERS #############
-# #########################################   LOAD & CLEAN PUUV IFA DATA   ########################################
-#
-# #load, clean, format PUUV IFA data
-# #go up a level from current wd, then down to file for puuv data
-# puuv_data <- read.csv(file="../volehantaR/puuv_ifa.csv") %>%
-#   clean_names %>%
-#   #populate column of FINAL PUUV status (result of second run if two runs were done, else result of first run)
-#   mutate(FINAL_puuv = ifelse(is.na(puuv_confirm), as.character(puuv_initial), as.character(puuv_confirm))) %>%
-#   mutate(samp_id = as.numeric(id),
-#          date_initial = as_date(date_initial, format= "%m/%d/%Y"),
-#          puuv_initial = as.factor(puuv_initial),
-#          date_confirm = as_date(date_confirm, format= "%m/%d/%Y"),
-#          puuv_confirm = as.factor(puuv_confirm),
-#          FINAL_puuv = as.factor(FINAL_puuv)) %>%
-#   drop_na(FINAL_puuv) %>%
-#   dplyr::select(FINAL_puuv, samp_id) %>%
-#   rename(puuv_ifa = FINAL_puuv) %>%
-#   left_join(tagsampid21.22, by="samp_id") %>% select(!samp_id) %>%
-#   drop_na(tag)
-# #output is a df with year, month, tag, and PUUV status (0,1) (BOTH YEARS!)
-#
-# ############ REMOVE THE VOLES from puuv_data THAT SEROCONVERT POS TO NEG ##################
-#
-# #voles that seroconvert PUUV+ to PUUV-
-# puuv_pos_neg <- puuv_data %>% group_by(tag) %>% arrange(year, month, .by_group = TRUE) %>%
-#   dplyr::select(year, month, tag, puuv_ifa) %>%
-#   summarise(status_time = toString(puuv_ifa)) %>%
-#   filter(str_detect(status_time, "1,\\s0")) #filter for animals that go from pos to neg
-# #pull the PIT tags
-# problemchildren <- puuv_pos_neg$tag
-# #filter netmetsPUUV to remove 'problemchildren'
-# puuv_data <- puuv_data %>%
-#   filter(!tag %in% problemchildren)
-#
-#
-# # add previous (lagged) degree (degree from previous month influences current PUUV status)
-# # add 0,1 for serovert - animals that go 0-0 or 0-1
-# # BUT! the previous month has to be in the same year (don't want 2021 fall to influence 2022 spring)
-# puuv <- puuv_data %>% group_by(year, tag) %>%
-#   arrange(month, .by_group = TRUE) %>%
-#   mutate(prev_puuv = lag(puuv_ifa)) %>%
-#   rename(curr_puuv = puuv_ifa) %>%
-#   mutate(color_status = case_when(prev_puuv=="1" ~ "prev_pos",
-#                                   curr_puuv=="1" ~ "new_pos",
-#                                   curr_puuv=="0" ~ "neg")) %>%
-#   select(year, month, tag, color_status)
-#
-# ## NOW PUUV has:
-#   # breeders and nonbreeders
-#   # is not tied to netmets data rn
-#   # new color_status column of new/prev positives
-#
-# ###############################################################################
-
-
-
-####------ ADD PUUV DATA FOR INFECTION STATUS ---------------
-
-# #create the 'circles' dataframes with all the circle dimensions and infection colors
-# circles21 <- circles21.22 %>% filter(year=="2021") %>%
-#   left_join(puuv, by=c("year", "month", "tag")) %>%
-#   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) #remove may from factor
-#
-# circles22 <- circles21.22 %>% filter(year=="2022") %>%
-#   left_join(puuv, by=c("year", "month", "tag")) %>%
-#   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) #remove may from factor
-
-
-
-# # quick visual
-# circles22 %>% filter(site=="luostari" & month=="july") %>%
-#   ggplot() +
-#   geom_point(aes(x=x, y=y, color=sex, size=2), show.legend = FALSE) +
-#   geom_circle( aes(x0=x, y0=y, r=rad_0.01, fill=color_status, color=sex), alpha=0.5) +
-#   scale_fill_manual(values=c("#999999", "#B8EC86", "#F19013"), na.value=NA) +
-#   geom_rect(aes(xmin = 0, xmax = 11, ymin = 0, ymax = 11),
-#             fill=NA, alpha = 0.4, color = "black", linetype=2) +
-#   coord_fixed()
 
 
 
