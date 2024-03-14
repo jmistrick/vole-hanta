@@ -6,35 +6,33 @@ library(tidyverse)
 library(igraph)
 library(lubridate)
 library(janitor)
+library(gridExtra)
 library(ggforce) #for geom_circle in ggplot
 library(cowplot)
 
 #clear environment
 rm(list = ls())
 
-######## HOME RANGE DISTRIBUTION ###########
+
+######## SPACE USE KERNELS ###########
 #negative sigmoidal curve calculated following Wanelik & Farine 2022: DOI 10.1007/s00265-022-03222-5
 #where the declining probability (P) of an individual being detected at a distance (d)
-#from the centroid of its home range is given by:
+#from the centroid of its space use kernel is given by:
 
 # P(d) = 1 / (1 + e^(-a-bd))
 
-#where a describes the overall size of the home range
-#b describes the steepness of the edge of the home range
-#and d is the logarithmic distance from the centroid
+#where "a" describes the overall size of the home range
+#"b" describes the steepness of the edge of the home range
+#and "d" is the logarithmic distance from the centroid
 
-# p <- 0.01 #eg probability of detection 1%
+# p <- 0.01 #e.g. probability of detection 1%
 # a <- params21[14,2]
 # b <- params21[14,3]
 #
 # (log((1/p)-1) + a) / (-b)
 
-######### ^^ this equation is what I'm using to calculate e.g. the distance from the centroid with 1% probability of finding the animal,
-  ##just to plot some figure showing approx HR size to visualize the overlaps
-
-
-
-#https://stackoverflow.com/questions/65089775/plotting-custom-functions-in-ggplot-with-variables-from-dataframe
+#### ^this equation is what I'm using to calculate e.g. the distance from the centroid with 1% probability of finding the animal,
+  ##just to plot a figure showing approx space use kernel size in order to visualize the overlaps
 
 
 
@@ -44,11 +42,11 @@ rm(list = ls())
 params21 <- readRDS(here("spaceuse_parameters21.rds")) %>% mutate(year=2021)
 params22 <- readRDS(here("spaceuse_parameters22.rds")) %>% mutate(year=2022)
 
-#MONTHLY centroids
+#MONTHLY centroid locations for each vole
 centroids21 <- readRDS(here("monthly_centroids21.rds")) %>% rename(tag = Tag_ID)
 centroids22 <- readRDS(here("monthly_centroids22.rds")) %>% rename(tag = Tag_ID)
 
-#load fulltrap data - pull tag, month, site
+#load fulltrap data (trapping metadata for each capture) - pull PIT tag, month, site
 ft21 <- readRDS(here("fulltrap21_03.04.24.rds"))
 trapdata21 <- ft21 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
   group_by(tag, month) %>% slice(1)
@@ -61,63 +59,10 @@ trapdata22 <- ft22 %>% select(c(year, season, trt, site, month, tag, sex, season
 ####--------------------------------------
 
 
-# ### ALL OF THIS goes basically into the figure below
-# ### just a lil thing 6/16 ###
-# 
-# #mean radius in 2021 by season, sex, breed
-# y21 <- params21 %>%
-#   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
-#   mutate(area = 2*pi*(rad_0.01^2)) %>%
-#   separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
-#   group_by(season, sex, breeder) %>%
-#   summarize(mean = mean(area),
-#             sd = sd(area))
-# 
-# #visualize M/F breeder/non size per trt from summer to fall
-# params21 %>%
-#   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
-#   separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
-#   unite(trt, foodtrt, helmtrt) %>%
-#   ggplot(aes(x=season, y=rad_0.01, color=sex, shape=breeder)) +
-#            geom_point() +
-#   facet_wrap(~trt)
-# 
-# 
-# #mean radius in 2021 by season, sex, breed
-# y22 <- params22 %>%
-#   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
-#   mutate(area = 2*pi*(rad_0.01^2)) %>%
-#   separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
-#   group_by(season, sex, breeder) %>%
-#   summarize(mean = mean(area))
-# 
-# #visualize M/F breeder/non size per trt from summer to fall
-# params22 %>%
-#   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
-#   separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
-#   unite(trt, foodtrt, helmtrt) %>%
-#   ggplot(aes(x=season, y=rad_0.01, color=sex, shape=breeder)) +
-#   geom_point() +
-#   facet_wrap(~trt)
-# 
-# 
-# #mean across both years, all trts
-# table <- rbind(params21, params22) %>%
-#   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
-#   mutate(area = 2*pi*(rad_0.01^2)) %>%
-#   mutate(area = area*10) %>%
-#   separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
-#   unite(trt, foodtrt, helmtrt) %>%
-#   group_by(season, breeder, sex) %>%
-#   summarize(mean = mean(area),
-#             sd = sd(area))
+### PLOT mean space use kernel size by functional group, trt, year ####
+### essentially using the params for each fxnl group and plotting space use size in area ####
 
-
-### PLOT mean HR SIZE by functional group, trt, year ####
-####### NEW FIGURE NOV 2023 jesus creepers and rice, why am I still working on this####
-#mean area each year by trt, sex, breed
-
-data <- rbind(params21, params22) %>%
+spaceusedata <- rbind(params21, params22) %>%
   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
   mutate(area = 2*pi*(rad_0.01^2)) %>%
   mutate(area = area*10) %>%
@@ -125,12 +70,12 @@ data <- rbind(params21, params22) %>%
   unite(trt, foodtrt, helmtrt) %>%
   unite(fxnl, sex, breeder) %>%
   group_by(year, season, trt, fxnl) %>%
-  summarize(mean = mean(area),
-            sd = sd(area)) %>%
+  summarize(mean = mean(area)) %>%
   mutate(season = factor(season, levels=c("summer", "fall"))) %>%
   mutate(trt = factor(trt, levels=c("unfed_control", "unfed_deworm",
                                     "fed_control", "fed_deworm")))
 
+#assign labellers for figure
 trt.labs <- as_labeller(c("unfed_control" = "Unfed-Control",
                           "unfed_deworm" = "Unfed-Deworm",
                           "fed_control" = "Fed-Control",
@@ -138,8 +83,9 @@ trt.labs <- as_labeller(c("unfed_control" = "Unfed-Control",
 year.labs <- as_labeller(c("2021" = "2021",
                           "2022" = "2022"))
 
-png(filename = here("spaceuse21-22_volehantaFig1.png"), height=6, width = 11, units = "in", res=600)
-ggplot(aes(x=season, y=mean, color=trt, shape=fxnl), data=data) +
+#plot and save
+png(filename = here("Figure_1_spaceuse_by_fxnl.png"), height=6, width = 11, units = "in", res=600)
+ggplot(aes(x=season, y=mean, color=trt, shape=fxnl), data=spaceusedata) +
   geom_jitter(size=4, width=0.15) +
   scale_x_discrete(labels=c("summer"="Summer", "fall"="Autumn")) +
   scale_shape_manual(values=c(19, 1, 17, 2),
@@ -170,6 +116,7 @@ dev.off()
 
 
 
+######## PLOT MULTIPLE SITES ACROSS MONTHS #############
 
 
 
@@ -192,32 +139,8 @@ circles22 <- left_join(centroids22, trapdata22, by=c("tag", "month", "site")) %>
   unite(fxnl_grp, sex, season_breeder, remove=FALSE) %>%
   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b))
 
-####### I SHOULD DEFINTELY CONFIRM THIS CALCULATION WITH SOMEONE BECAUSE I'M RULL DUMB AT MATH ################
-#matt M-S said it was fine :)
 
 
-
-####--------------real quick plots just to see----------------------
-
-# library(ggforce) #for geom_circle in ggplot
-#https://ggforce.data-imaginist.com/reference/geom_circle.html
-
-# circles21 %>% filter(site=="vaarinkorpi" & month=="sept") %>%
-#   ggplot() +
-#   geom_point(aes(x=x, y=y, color=sex)) +
-#   geom_circle( aes(x0=x, y0=y, r=rad_0.01, color=sex), alpha=0.5) +
-#   geom_rect(aes(xmin = 0, xmax = 11, ymin = 0, ymax = 11),
-#             fill=NA, alpha = 0.4, color = "black", linetype=2) +
-#   coord_fixed()
-
-
-####-------------------------------------------
-
-
-
-
-
-######## PLOT MULTIPLE SITES ACROSS MONTHS #############
 
 ##---------------- CREATE A NESTED LIST of CIRCLES (nested by site, month) --------------------
 
@@ -273,8 +196,6 @@ names(circles22_list) <- site_names
 
 
 ####------------ PLOT [JUST CIRCLES] IN A LOOP (per YEAR)---------------------------
-
-library(gridExtra)
 
 #define colors for each fxnl group
 #because number of fxnl groups per plot varies, want to be sure that each group is always same color
