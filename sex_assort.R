@@ -8,15 +8,15 @@ library(janitor)
 #clear environment
 rm(list = ls())
 
-# ft21 <- readRDS(here("fulltrap21_05.10.23.rds"))
-# data = ft21
-# networks_file = "overlapnets21_STSB.rds"
-# sex_assort_file = "sex_assort21_STSB.rds"
+ft21 <- readRDS(here("fulltrap21_03.04.24.rds"))
+data = ft21
+networks_file = "overlap_networks21.rds"
+sex_assort_file = "sex_assort21.rds"
 
-ft22 <- readRDS(here("fulltrap22_05.10.23.rds"))
-data = ft22
-networks_file = "overlapnets22_STSB.rds"
-sex_assort_file = "sex_assort22_STSB.rds"
+# ft22 <- readRDS(here("fulltrap22_03.04.24.rds"))
+# data = ft22
+# networks_file = "overlap_networks22.rds"
+# sex_assort_file = "sex_assort22.rds"
 
 
 sex_assort <- function(data, networks_file, sex_assort_file){
@@ -99,7 +99,6 @@ sex_assort <- function(data, networks_file, sex_assort_file){
       site[[j]]$fm <- ifelse(check==1, NA, mat["M","F"]*2) #double the fm overlaps since network is undirected
       site[[j]]$ff <- ifelse(check==1, NA, mat["F","F"])
       site[[j]]$mm <- ifelse(check==1, NA, mat["M","M"])
-
 
       ### FOR ASSORTATIVITY BY SEX-BREEDER
       #filter tag_sex for only ids caught this site/occ
@@ -210,9 +209,9 @@ sex_assort <- function(data, networks_file, sex_assort_file){
 ###### both years ########
 
 #combo 2021 and 2022
-sex_assort21 <- readRDS(here("sex_assort21_STSB.rds")) %>%
+sex_assort21 <- readRDS(here("sex_assort21.rds")) %>%
   mutate(year="2021")
-sex_assort22 <- readRDS(here("sex_assort22_STSB.rds")) %>%
+sex_assort22 <- readRDS(here("sex_assort22.rds")) %>%
   mutate(year="2022")
 
 sex_assort21.22 <- rbind(sex_assort21, sex_assort22)
