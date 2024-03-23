@@ -1,23 +1,33 @@
-# load packages
-library(here)
-library(tidyverse)
-library(igraph)
-library(ggraph)
-library(tidygraph)
-library(colorBlindness)
-library(patchwork) #effectively cowplot for combining ggraph plots
+### 05 - Plot Spatial Overlap Networks
+### AUTHOR
+### 23 March 2024
+### this code accompanies the manuscript: "Ecological factors alter how spatial overlap predicts viral 
+  # infection dynamics in wild rodent populations"
+### Run using R version 4.3.2 (2023-10-31) -- "Eye Holes"
 
+### PURPOSE: 
+# THIS CODE plots the spatial overlap networks constructed in 02_construct_spatial_overlap_networks.R
+# as a composite of five networks (one per month June-October), per site, in 2021 and in 2022
+
+#this code runs off the overlap_nets files generated in "02_construct_spatial_overlap_networks.R"
+
+###------------------------------------------------------------------------------
+
+
+# load packages
+library(here) #v 1.0.1
+library(tidyverse) #v 2.0.0
+library(igraph) #v1.6.0
+library(ggraph) #v2.1.0
+library(tidygraph) #1.3.0
+library(colorBlindness) #v 0.1.9
+library(patchwork) #effectively cowplot for combining ggraph plots #v 1.2.0
 
 #clear environment
 rm(list = ls())
 
 
-#######----------------- DATA CLEANING & NETWORK CONSTRUCTION -----------------------###############
-
-#the following code will run off the overlap_nets files generated in "02_construct_spatial_overlap_networks.R"
-
-
-#######----------------- NETWORKS PLOTTING -----------------------###############
+####-------------------------------------------
 
 ## LOAD 2021 DATA ##
 
@@ -37,8 +47,6 @@ centroids <- readRDS(here("monthly_centroids21.rds")) %>%
 
 ############################################
 
-
-
 ## LOAD 2022 DATA ##
 
 # #network data
@@ -55,17 +63,19 @@ centroids <- readRDS(here("monthly_centroids21.rds")) %>%
 #   mutate(jitter_x = jitter(x, 20),
 #          jitter_y = jitter(y, 20))
 
-##############################################
 
 
-######## PLOT MULTIPLE SITES ACROSS MONTHS #############
+
+#######----------------- PLOT SPATIAL OVERLAP NETWORKS --------------------
+
+## plot 1 network per month (June-October) for each site and combine as a composite figure
+## repeat for all sites (n=12) per year in 2021 and 2022
 
 
 #define colors for each fxnl group
-#because number of fxnl groups per plot varies, want to be sure that each group is always same color
+#because number of fxnl groups per network varies, want to be sure that each group is always same color
 #https://stackoverflow.com/questions/17180115/manually-setting-group-colors-for-ggplot2
 fxnl.colors <- c(F_breeder="#c9184a", F_nonbreeder="#ffa9b9", M_breeder="#023e8a", M_nonbreeder="#a3d5ff")
-
 
 #create list to store generated graphs (1 per month per site)
 graph_list <- list()
@@ -167,6 +177,7 @@ for(i in 1:length(graph_list)){
 }
 
 ### NOTE! The labels for the colors in the legend will be wrong if all four fxnl groups are not represented in the graph
+  ## and there will be multiple legends - only trust legends with all four fxnl groups represented
 
 ######################################
 
@@ -191,6 +202,7 @@ for(i in 1:length(graph_list)){
 # }
 
 ### NOTE! The labels for the colors in the legend will be wrong if all four fxnl groups are not represented in the graph
+  ## and there will be multiple legends - only trust legends with all four fxnl groups represented
 
 
 ######################################
