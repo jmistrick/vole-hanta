@@ -21,11 +21,11 @@
 ###------------------------------------------------------------------------------
 
 # load packages
-library(here)
-library(tidyverse)
-library(igraph)
-library(lubridate)
-library(janitor) 
+library(here) #v 1.0.1
+library(tidyverse) #v 2.0.0
+library(igraph) #v1.6.0
+library(lubridate) #v 1.9.3
+library(janitor) #v 2.2.0
 
 #clear environment
 rm(list = ls())
