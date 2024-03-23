@@ -1,12 +1,12 @@
-# Run using R version 4.3.2 "Eye Holes"
+### 03-1 - FUNCTIONS - Construct Spatial Overlap Networks
+### AUTHOR
+### 23 March 2024
+### this code accompanies the manuscript: "Ecological factors alter how spatial overlap predicts viral 
+  # infection dynamics in wild rodent populations"
+### Run using R version 4.3.2 (2023-10-31) -- "Eye Holes"
 
-# 02-1 - Functions to construct spatial overlap networks
-# Author: __MY NAME__
-# Associated Publication:
-# __TITLE__  
-  # __AUTHORS__
-
-# This code provides the functions necessary to run the code in 02_construct_spatial_overlap_networks
+### PURPOSE: 
+# This code provides the functions necessary to run the code in 03_construct_spatial_overlap_networks.R
 # and to estimate parameters describing bank vole space use, construct spatial overlap networks representing
 # populations of bank voles at a given study site, and calculate network metrics from these networks
 
@@ -15,7 +15,8 @@
   # create_overlap_networks()
   # calculate_network_metrics()
 
-##-----------------------------------------------------------------
+###------------------------------------------------------------------------------
+
 
 ## Function for generating the a and b parameters by season/trt/sex/season_breeder to define the distributions for vole HRs
 ## Inputs: data = FULL fulltrap dataframe that contains all capture data for a given year
@@ -405,7 +406,7 @@ create_overlap_networks <- function(data, params_file, centroids_file, networks_
   }
 
   #in case there were NULL list elements (for a month with 0 or 1 animals)
-  library(rlist)
+  library(rlist) #v 0.4.6.2
   #a slick little function that removes NULL list elements (recursive=TRUE) to work through nested lists
   overlap_network_list <- list.clean(overlap_network_list, fun = is.null, recursive = TRUE)
 
@@ -494,17 +495,6 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       adjmatscaled <-ifelse(adjmat>0.01,1,0)
       inet_bin01 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
 
-      # #and for SUPPLEMENT, a lil sensitivity testing
-      # adjmatscaled <-ifelse(adjmat>0.05,1,0)
-      # inet_bin05 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
-      # 
-      # adjmatscaled <-ifelse(adjmat>0.001,1,0)
-      # inet_bin001 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
-      # 
-      # adjmatscaled <-ifelse(adjmat>0.005,1,0)
-      # inet_bin005 <- graph_from_adjacency_matrix(adjmatscaled, weighted=NULL, mode="undirected", diag=FALSE)
-      # ##end sensitivity testing##
-
       ids <- get.vertex.attribute(inet, "name") #tag ids for all the animals on the grid
       month <- rep(names(overlap_network_list[[i]])[j],length(ids)) #capture month
 
@@ -518,21 +508,18 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       #binary degree (number of overlaps)
       site[[j]]$bin.01.deg <- igraph::degree(inet_bin01)
 
-      # site[[j]]$bin.05.deg <- igraph::degree(inet_bin05)
-      # site[[j]]$bin.001.deg <- igraph::degree(inet_bin001)
-      # site[[j]]$bin.005.deg <- igraph::degree(inet_bin005)
-
       #number of nodes (voles) in the network
       site[[j]]$n.node <- rep(igraph::gorder(inet), length(ids))
-      
-      ### FOR ASSORTATIVITY - igraph doesn't do it with weighted degree - see code using assortnet in separate script
       
       
       #####-------------- calculating sex- and repro-specific degree measures -----------------------
       
       ###### Calculate Male-degree, Female-degree #########
       
-      ###### Calculate Breeder-degree, Nonbreeder-degree #########
+      ###### Calculate Breeder(Reproductive)-degree, Nonbreeder(Nonreproductive)-degree #########
+      # yes, I know I use different language in the manuscript vs here in the code, I'm indecisive and spent
+      # too much time going back and forth. Just accept that anywhere I say "Breeder" here I mean "Reproductive"
+      # and likewise with "nonbreeder" and "nonreproductive"  ¯\_(ツ)_/¯ 
       
       #make a (new) network from the adj matrix
       g <- graph_from_adjacency_matrix(adjmat, mode="directed", weighted=TRUE, diag = FALSE)
@@ -545,9 +532,6 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       metadata <- fulltrap %>% #starts with fulltrap, need to get down to a 'traits' version
         filter(site==site.id & month==month.id) %>%
         group_by(tag) %>% slice(1)  #one entry per vole per month
-      #   drop_na(sex) %>% #didn't build networks with animals with sex=NA
-      #   drop_na(season_breeder) #didn't build networks with animals with season_breeder=NA
-      # ###dropping both sex and season_breeder = NA should clean up sb so there are no NAs
       
       #set "sex" as a vertex attribute
       g <- set.vertex.attribute(graph=g, name="sex", index=V(g), value=metadata$sex)
