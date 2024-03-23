@@ -1,10 +1,24 @@
-#code to clean data for "Vole Hanta" manuscript
-#run using R version 4.3.2 "Eye Holes"
+### 01 - Vole Capture Data Cleaning
+### AUTHOR
+### 23 March 2024
+### this code accompanies the manuscript: "Ecological factors alter how spatial overlap predicts viral 
+    # infection dynamics in wild rodent populations"
+### Run using R version 4.3.2 (2023-10-31) -- "Eye Holes"
+
+### PURPOSE: 
+## This code cleans and combines the vole processing and the week recap data (input as .csv files) to be used as the
+## main data input for downstream analyses (spatial networks, hantavirus models)
+## Inputs: processing data = "filename.csv" - (fed into here()) THIS SHOULD BE THE FULL 2021, 2022 CLEANED DATA
+##          WRdata = "filename.csv" - same as above
+##          year = number (2021 or 2022) to get the year you want
+##          fulltrap_output = "filename.rds" - where to save the final, cleaned 'fulltrap' file
+## Output: fulltrap file with all the capture/WR data combined, plus new stuff calculated for desired year
 
 #now running on 03.04.24 versions of vole_capture_data and week_recap_data
-  #these versions are the most up-to-date with Katy Wearing's corrections to all 3 years of data (2021-2023)
-  #all updates were discussed and confirmed by Katy W, Jasmine Veitch, Janine M, and Dyess Harp in Jan/Feb 2024
+#these versions are the most up-to-date with Katy Wearing's corrections to all 3 years of data (2021-2023)
+#all updates were discussed and confirmed by Katy W, Jasmine Veitch, Janine M, and Dyess Harp in Jan/Feb 2024
 
+###------------------------------------------------------------------------------
 
 # load packages
 library(here)
@@ -18,6 +32,10 @@ rm(list = ls())
 
 
 ########### TO RUN THIS CODE IN THIS FILE ################
+
+#load EITHER the files for the 2021 data or 2022 data and run the entire script
+#then clear environment, load the other year data here and rerun the script
+
 # #clean 2021 data
 # processingdata = "vole_capture_data_03.04.24.csv"
 # WRdata= "week_recap_data_03.04.24.csv"
@@ -32,21 +50,15 @@ yr=2022
 #########################################################
 
 
-## This function cleans and combines the vole processing and the week recap data (input as .csv files)
-## Inputs: processing data = "filename.csv" - (fed into here()) THIS SHOULD BE THE FULL 2021, 2022 CLEANED DATA
-##          WRdata = "filename.csv" - same as above
-##          year = number (2021 or 2022) to get the year you want
-##          fulltrap_output = "filename.rds" - where to save the final 'fulltrap' file
-## Output: fulltrap file with all the capture/WR data combined, plus new stuff calculated for desired year
-
+### OPTION - this can be saved as a function
 # clean_data <- function(processingdata, WRdata, yr, fulltrap_output) {
 
   ###############################   ENTRY & CLEANING VOLE CAPTURE DATA   ##################################
 
   #load data
   voledata <- read.csv(here(processingdata))
-  #march 03 2024 version - has cleaned/updated PIT tags, vole sexes (2021 and 2022 season)
-    #cleaning was done on full 2021,2022,2023 capture data
+  #march 03 2024 version - has cleaned/updated PIT tags, vole sexes (for 2021 and 2022 season)
+    #cleaning was done on full 2021,2022,2023 capture data by Katy Wearing
 
   #clean names
   voledata <- voledata %>%
@@ -96,43 +108,6 @@ yr=2022
     #remove animals found dead when setting/supplementing
     filter(!session == "0") %>%
     filter(!is.na(session))
-
-  ########## THE ABOVE CODE removes all animals that have missing data or were found dead NOT during a trapping occasion ##################
-  # voledata %>% filter(is.na(trap))
-  # #219825 - euthanized 9.1.21 during field course (caught off the grid)
-  # #219917 - euthanized 9.1.21 during field course (caught off the grid)
-  # voledata %>% filter(is.na(tag)) #these are fine to remove, nothing important here
-  # voledata %>% filter(session=="0")
-  # #these are animals found dead when setting - but I don't know when they went into the trap (assumed right after we left)
-  # #they aren't technically session 4 captures, though so I don't know what I'd do with them if I left them in
-  # voledata %>% filter(is.na(session)) #these animals were found DT when supplementing
-
-  ########## RIGHT NOW, all of the DP, DT, and S animals (except those that were part of ^ above) are still in the dataset ################
-  # #remove animals euthanized for terminal sampling
-  # filter(!fate == "S")
-  # #remove animals DP or DT
-  # filter(!fate == "DP") %>%
-  # filter(!fate == "DT")
-
-  #check for spelling errors, extra groups, weird data
-  # df$column[df$column == "old_value"] <- new_value #find and replace
-  # unique(voledata$site)
-  # unique(voledata$year)
-  # unique(voledata$occasion)
-  # unique(voledata$session)
-  # unique(voledata$food_trt)
-  # unique(voledata$helm_trt)
-  # unique(voledata$sex)
-  # unique(voledata$fate)
-  # unique(voledata$ow)
-  # unique(voledata$per)
-  # unique(voledata$nip)
-  # unique(voledata$preg)
-  # unique(voledata$test)
-  # range(voledata$head, na.rm = TRUE)
-  # range(voledata$mass, na.rm = TRUE)
-  # range(voledata$ticks, na.rm = TRUE)
-
 
   ################################ create a time column to replace session (for CMRnet) ##################################
   voledata <-
@@ -203,8 +178,6 @@ yr=2022
     dplyr::select(-id_as_number, -date, -ow, -ticks, -ear_ed, -saliva_sr, -smear_bs,
                   -bloodspin_bc, -bloodrna_br, -fecalegg_fe, -fecalrna_fr, -deworm, -new, -handler, -notes)
 
-  ##### SAMPLE_ID and YEAR are back in the data (May 2023)
-
 
   #############################  LOAD AND CLEAN WEEK RECAP DATA   ###############################################
 
@@ -258,30 +231,6 @@ yr=2022
     filter(!is.na(trap)) %>% #remove NA trap
     filter(!is.na(tag)) #remove NA tag
 
-  # #check for missing data
-  # wr_data %>% filter(is.na(session)) #no missing sessions
-  # wr_data %>% filter(is.na(date)) #no missing dates
-
-  #check for spelling errors, extra groups, weird data
-  # unique(wr_data$year)
-  # unique(wr_data$occasion)
-  # unique(wr_data$site)
-  # unique(wr_data$food_trt)
-  # unique(wr_data$helm_trt)
-  # unique(wr_data$session)
-  # unique(wr_data$sex)
-  # unique(wr_data$per)
-  # unique(wr_data$nip)
-  # unique(wr_data$preg)
-  # unique(wr_data$test)
-  # unique(wr_data$fate)
-
-  ############ DEAD ANIMALS ARE STILL IN THE DATASET ###################
-  # #remove animals euthanized for terminal sampling
-  # filter(!fate == "S") %>%
-  # #remove animals DP or DT
-  # filter(!fate == "DP") %>%
-  # filter(!fate == "DT")
 
   ################################ create a time column to replace session (for CMRnet) ##################################
   wr_data <-
@@ -388,19 +337,6 @@ yr=2022
   #this will record all the WRs as 0 as well
   ################ END FIRSTCAP/NEW ###########################
 
-  # #in case igraph is already running, it masks "%--%" and the lubridate code won't run
-  # # library(needs)
-  # # prioritize(lubridate)
-  # #create a measure of TIME KNOWN ALIVE (also date of first cap, last capture)
-  # fulltrap <- fulltrap %>%
-  #   group_by(tag) %>%
-  #   arrange(date_time) %>%
-  #   mutate(first_seen = min(date_time),
-  #          last_seen = max(date_time)) %>%
-  #   mutate(days_known_alive = round( as.duration(first_seen %--% last_seen) / ddays(1) , digits=2) ) %>%
-  #   ungroup()
-
-  ## KEEPING traps_per_life and caps_per_life for exploratoriness measurement later
   
   #create caps_per_life column - number of captures of that individual
   fulltrap <- fulltrap %>%
@@ -428,33 +364,6 @@ yr=2022
     mutate(season = ifelse(month=="sept" | month=="oct", "fall", "summer")) %>%
     mutate(season = factor(season, levels=c("summer", "fall"))) %>%
     relocate(season, .after=month)
-  
-  # #caps_per_season
-  # fulltrap <- fulltrap %>%
-  #   group_by(tag, season) %>%
-  #   mutate(caps_per_season = length(tag)) %>%
-  #   mutate(res = ifelse(caps_per_season >= 5, "resident", "nonresident")) %>% #add resident status
-  #   mutate(res = factor(res)) %>%
-  #   relocate(res, .after = traps_per_life) %>%
-  #   ungroup()
-  # ################ NOTE: RESIDENT = 5 caps per SEASON -- NOT 5 caps per LIFE #############
-  # #traps_per_season
-  # fulltrap <- fulltrap %>%
-  #   group_by(tag, season) %>%
-  #   mutate(traps_per_season = length(unique(trap))) %>%
-  #   ungroup()
-  # 
-  # #caps_per_occ column - number of captures per occasion
-  # fulltrap <- fulltrap %>%
-  #   group_by(occasion, tag) %>%
-  #   mutate(caps_per_occ = length(tag)) %>%
-  #   ungroup()
-  # #count of number of unique traps per animal per occasion
-  # ##n_distinct() is a dplyr wrapper for length(unique())
-  # fulltrap <- fulltrap %>%
-  #   group_by(tag, occasion) %>%
-  #   mutate(traps_per_occ  = length(unique(trap))) %>%
-  #   ungroup()
 
   #make a column (current_breeder) of "breeder"/"nonbreeder" based on 1 for per/nip/preg or test IN THAT CAPTURE
   #NAs persist
@@ -500,10 +409,6 @@ yr=2022
            season_breeder, mass, head), .direction="downup") %>% #fill missing data within an occasion
     ungroup()
 
-  #### 2021 VOLES WITH SEX=NA (DUE TO FUCKUPS and other things and it's okay, I'm not mad about it)
-  # 226128 # 226211 # 226769 # 219682
-  ## some 2022 voles (at least 2) have sex=NA because we couldn't determine the correct sex
-
 
   ####################################################################################################
 
@@ -532,5 +437,6 @@ yr=2022
 
   #################### END ########################
 
-
-# } #not currently running as a function
+  
+## OPTION: this can be run as a function
+# } #commented out because not currently running as a function
