@@ -1,25 +1,32 @@
-# Run using R version 4.3.2 "Eye Holes"
+### 03 - Construct Spatial Overlap Networks
+### AUTHOR
+### 23 March 2024
+### this code accompanies the manuscript: "Ecological factors alter how spatial overlap predicts viral 
+  # infection dynamics in wild rodent populations"
+### Run using R version 4.3.2 (2023-10-31) -- "Eye Holes"
 
-# 02 - Construct Spatial Overlap Networks
-# Author: __MY NAME__
-# Associated Publication:
-# __TITLE__  
-  # __AUTHORS__
-
+### PURPOSE: 
 # This code sources the functions in 02-1_functions_construct_spatial_overlap_networks
 # to estimate parameters describing bank vole space use, construct spatial overlap networks representing
 # populations of bank voles at a given study site, and calculate network metrics from these networks
 
+###------------------------------------------------------------------------------
+
 
 # load packages
-library(here) #VERSION ___
-library(tidyverse) #VERSION ___
-library(igraph) #VERSION ___
-library(lubridate) #VERSION ___
-library(janitor) #VERSION ___
+library(here) #v 1.0.0
+library(tidyverse) #v 2.0.0
+library(igraph) #v1.6.0
+library(lubridate) #v 1.9.3
+library(janitor) #v 2.2.0
+library(ggridges) #v 0.5.5
+library(cowplot) #v 1.1.2
 
 #clear environment
 rm(list = ls())
+
+
+###-----------------------------------------------------------
 
 
 #######----------- GENERATE SPACE USE DISTRIBUTION PARAMETERS ----------###############
@@ -30,31 +37,10 @@ rm(list = ls())
 source(here("02-1_functions_construct_overlap_networks.R"))
 
 
-
 ########### RUN FOR 2021 DATA ################
 
 #load the 2021 capture data from RDS
 fulltrap21 <- readRDS(here("fulltrap21_03.04.24.rds"))
-
-# #alternatively, load capture data from csv file and format data columns
-# fulltrap21 <- read.csv(here("fulltrap21_03.04.24.csv")) %>%
-#   mutate(year = as.numeric(year),
-#          month = factor(month, levels=c("june", "july", "aug", "sept", "oct")),
-#          season = factor(season, levels=c("summer", "fall")),
-#          occ.sess = as.character(occ.sess),
-#          occasion = as.numeric(occasion),
-#          session = as.numeric(session),
-#          site = as.character(site),
-#          trt = factor(trt, levels=c("unfed_control", "unfed_deworm", "fed_control", "fed_deworm")),
-#          food_trt = factor(food_trt, levels=c("unfed", "fed")),
-#          helm_trt = factor(helm_trt, levels=c("control", "deworm")),
-#          tag = as.character(tag),
-#          firstcap = factor(firstcap),
-#          trap = as.character(trap),
-#          x = as.numeric(x),
-#          y = as.numeric(y),
-#          sex = as.factor(sex),
-#          season_breeder = factor(season_breeder, levels=c("breeder", "nonbreeder")))
 
 
 #generate space use distribution parameters
@@ -89,26 +75,6 @@ calculate_network_metrics(data=fulltrap21,
 #load the 2022 capture data from RDS
 fulltrap22 <- readRDS(here("fulltrap22_03.04.24.rds"))
 
-# #alternatively, load capture data from csv file and format data columns
-# fulltrap22 <- read.csv(here("fulltrap22_03.04.24.csv")) %>%
-#   mutate(year = as.numeric(year),
-#          month = factor(month, levels=c("june", "july", "aug", "sept", "oct")),
-#          season = factor(season, levels=c("summer", "fall")),
-#          occ.sess = as.character(occ.sess),
-#          occasion = as.numeric(occasion),
-#          session = as.numeric(session),
-#          site = as.character(site),
-#          trt = factor(trt, levels=c("unfed_control", "unfed_deworm", "fed_control", "fed_deworm")),
-#          food_trt = factor(food_trt, levels=c("unfed", "fed")),
-#          helm_trt = factor(helm_trt, levels=c("control", "deworm")),
-#          tag = as.character(tag),
-#          firstcap = factor(firstcap),
-#          trap = as.character(trap),
-#          x = as.numeric(x),
-#          y = as.numeric(y),
-#          sex = as.factor(sex),
-#          season_breeder = factor(season_breeder, levels=c("breeder", "nonbreeder")))
-
 
 #generate space use distribution parameters
 generate_params(data = fulltrap22,
@@ -139,10 +105,10 @@ netmets22 <- readRDS(here("network_metrics22.rds"))
 
 
 
-############################ DEGREE DISTRIBUTION BY TRT / YEAR ###########################################
+##################### DEGREE DISTRIBUTION BY TRT / YEAR #################################
 
 ## INCLUDES ALL animals from networks 
-  #(ie 170 more than netmets_puuv because the voles that are lacking PUUV data are in the networks and are here)
+  #(i.e., 170 more than netmets_puuv because the voles that are lacking PUUV data are in the networks and are here)
 
 ### LOAD INDIVIDUAL VOLE METADATA by year 
 fulltrap21 <- readRDS(file="fulltrap21_03.04.24.rds")
@@ -165,17 +131,18 @@ netmets_full <- left_join(netmets21.22, fulltrap21.22, by=c("year", "site", "mon
          month = as.factor(month),
          month = factor(month, levels=c("june", "july", "aug", "sept", "oct")))
 
-### SUMMARISE VALUES FOR MAIN TEXT, Figure for supplement
+
+### SUMMARISE VALUES for main text ###
+
+# #mean wtdeg by month, trt, in 2021 and 2022
+# netmets_full %>% group_by(year, month, trt) %>%
+#   summarise(mean=mean(wt.deg),
+#             sd=sd(wt.deg))
 
 #mean wtdeg across ALL months, by treatment in 2021, 2022
 netmets_full %>% group_by(year, trt) %>%
   summarise(mean=mean(wt.deg),
             sd=sd(wt.deg))
-
-#mean wtdeg by month, trt, in 2021 and 2022
-# netmets_full %>% group_by(year, month, trt) %>%
-#   summarise(mean=mean(wt.deg),
-#             sd=sd(wt.deg))
 
 #### THESE VALUES REPORTED in manuscript
 #mean wtdeg across ALL trt, ALL months in 2021, 2022
@@ -183,6 +150,10 @@ netmets_full %>% group_by(year) %>%
   summarise(mean=mean(wt.deg),
             sd=sd(wt.deg))
 
+
+### VISUALIZE weighted degree distributions, generate Figure for supplement ###
+
+#labeller for facets
 trt_labs <- as_labeller(c(unfed_control="Unfed Control", 
                           unfed_deworm="Unfed Deworm", 
                           fed_control="Fed Control", 
@@ -191,10 +162,11 @@ trt_labs <- as_labeller(c(unfed_control="Unfed Control",
 #increase axis ticks: https://stackoverflow.com/questions/11335836/increase-number-of-axis-ticks
 #add mean for each facet: https://stackoverflow.com/questions/44196384/how-to-produce-different-geom-vline-in-different-facets-in-r
 
+#create dataframe
 meandata <- netmets_full %>% group_by(year, trt) %>%
   summarize(mean_x = mean(wt.deg))
 
-#weighted degree by trt, year bars for mean
+#visualize weighted degree summarised by trt, year - vertical bars for mean
 netmets_full %>%
   ggplot(aes(x=wt.deg)) +
   geom_histogram(stat="bin") +
@@ -204,11 +176,9 @@ netmets_full %>%
   facet_grid(trt~year, labeller=labeller(trt=trt_labs)) +
   xlab("Weighted Degree") + ylab("Count")
 
-##alternatively to see each month for a trt
-library(ggridges)
-library(cowplot)
+#visualize wtdeg by month per trt, year - SUPPLEMENT FIGURE S1
 png(filename = "FIG_wt.deg_by_month-trt.png", width=10, height=8, units="in", res=300)
-netmets_puuv %>%
+netmets_full %>%
   mutate(month.rev = factor(month, levels=c("oct", "sept", "aug", "july", "june"))) %>%
   ggplot(aes(x=wt.deg, y=month.rev, fill=trt, color=trt)) +
   geom_density_ridges(stat = "binline", alpha=0.5,
@@ -228,20 +198,4 @@ netmets_puuv %>%
         strip.text.y = element_text(size=14))
 dev.off()
 
-
-# #weighted degree by trt, month
-# #2021 data
-# netmets_puuv %>% filter(year=="2021") %>%
-#   ggplot(aes(x=wt.deg)) +
-#   geom_histogram(stat="bin") +
-#   scale_x_continuous(breaks = scales::pretty_breaks(n = 6)) +
-#   facet_grid(trt~month) +
-#   xlab("Weighted Degree") + ylab("Count")
-# #2022 data
-# netmets_puuv %>% filter(year=="2022") %>%
-#   ggplot(aes(x=wt.deg)) +
-#   geom_histogram(stat="bin") +
-#   scale_x_continuous(breaks = scales::pretty_breaks(n = 6)) +
-#   facet_grid(trt~month) +
-#   xlab("Weighted Degree") + ylab("Count")
 ############################################################################
