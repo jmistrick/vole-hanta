@@ -121,12 +121,13 @@ for(i in 1:length(overlap_network_list)) {
       scale_edge_width(range=c(0,3), guide="none") + #scale edge width by weight
       scale_edge_colour_gradient(low="#F0F0F0", high="#000000", guide="none") + # set the (gray)scale, remove legend
       theme_void() +
-      labs(title=paste(names(overlap_network_list[[i]])[j]),
-           fill="Functional Group:",
+      labs(fill="Functional Group:",
            edge_colour="Spatial Overlap") +
       theme(plot.title = element_text(size= 16, hjust = 0.5),
             legend.title = element_text(size=12),
             legend.text = element_text(size=11))
+    
+    # to add month to top of each graph: labs( title=paste(names(overlap_network_list[[i]])[j]) )
     
     #the output of ggraph() is a nested list - (class ggraph, gg, ggplot)
     #needs to be added to graph_list using [[i]][[j]] <- can store a list as item [[j]] and NOT [[i]][j] <- only stores the first item of (list) g2 as [j]
@@ -154,14 +155,14 @@ for(i in 1:length(graph_list)){
   #use patchwork package to concatenate ggraph plots
   patchwork::wrap_plots(site, nrow=1) + plot_annotation(title=paste(names(overlap_network_list)[[i]], "2021")) +
     plot_layout(guides="collect") & theme(legend.position = "bottom",
-                                          plot.margin=margin(c(0,30,0,30)),
+                                          plot.margin=margin(c(0,32.5,0,32.5)),
                                           legend.box.margin=margin(20,0,0,0))
 
   #save the composite figure as .png
   ggsave(filename = paste("spatial_overlap_", "fxnlgrp_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
          plot=last_plot(),
-         width=20, height=4.5, units="in",
-         dpi=300)
+         width=19, height=4, units="in",
+         dpi=600)
 
 }
 
@@ -184,8 +185,8 @@ for(i in 1:length(graph_list)){
 #   #save the composite figure as .png
 #   ggsave(filename = paste("spatial_overlap_", "fxnlgrp_", names(overlap_network_list)[[i]], "_2022", ".png", sep = ""),
 #          plot=last_plot(),
-#          width=20, height=4.5, units="in",
-#          dpi=300)
+#          width=18, height=5, units="in",
+#          dpi=600)
 # 
 # }
 
