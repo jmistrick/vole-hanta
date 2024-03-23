@@ -1,21 +1,35 @@
-#### DOCUMENT DETAILS HERE
+### 7 - Model Hantavirus Infection
+### AUTHOR
+### 23 March 2024
+### this code accompanies the manuscript: "Ecological factors alter how spatial overlap predicts viral 
+  # infection dynamics in wild rodent populations"
+### Run using R version 4.3.2 (2023-10-31) -- "Eye Holes"
 
-# code run using R version 4.3.2 (2023-10-31) -- "Eye Holes"
+### PURPOSE: 
+# THIS CODE examines the effect of previous network degree on current infection status, running
+# the suite of candidate models for each treatment (Unfed-Control, Unfed-Deworm, Fed-Control, Fed-Deworm)
+# and identifying the best fit model for each treatment
+
+#Language throughout this code uses "breeder" and "nonbreeder" which are 
+  #equivalent to "reproductive" and "nonreproductive" in the manuscript text.
+
+###------------------------------------------------------------------------------
 
 #load libraries
-library(here)
-library(tidyverse)
-library(janitor)
-library(lubridate)
-library(lme4)
-library(gtsummary) #pretty regression summary tables
+library(here) #v 1.0.1
+library(tidyverse) #v 2.0.0
+library(janitor) #v 2.2.0
+library(lubridate) #v 1.9.3
+library(lme4) #v 1.1-35.1
+library(cowplot) #v 1.1.2
+library(gtsummary) #pretty regression summary tables #v 1.7.2
 
 #clear environment
 rm(list = ls())
 
 ######################### FORMAT DATA ##################################
 
-#load netmets_puuv
+#load netmets_puuv data file
 netmets_puuv <- readRDS(here("netmets_puuv_03.08.24.rds")) %>%
     rename(Sex = sex,
            Treatment = trt,
@@ -25,7 +39,7 @@ netmets_puuv <- readRDS(here("netmets_puuv_03.08.24.rds")) %>%
            Previous_M.degree = prev_M.deg,
            Previous_F.degree = prev_F.deg)
 
-#pull the numeric (ie not categorical predictors)
+#pull the numeric (i.e., not categorical predictors)
 scaled_numeric <- netmets_puuv %>% ungroup() %>% select(explore,
                                                         prev_wt.deg,
                                                Previous_F.degree, Previous_M.degree, 
@@ -109,7 +123,7 @@ nm_puuv_scaled <- cbind(nm_puuv_short, scaled_numeric)
 # ########################
 # 
 # #GLMM model diagnostics > https://cran.r-project.org/web/packages/DHARMa/vignettes/DHARMa.html
-# library(DHARMa)
+# library(DHARMa) #v 0.4.6
 # #calculate residuals (then run diagnostics on these)
 # simulationOutput <- simulateResiduals(fittedModel = mod_breeds)
 # plot(simulationOutput) #qq plot and residual vs fitted
@@ -599,7 +613,9 @@ nm_puuv_scaled <- cbind(nm_puuv_short, scaled_numeric)
 
 
 ################################################################################################
+######################### SAVE MODEL SUMMARIES AND GENERATE FIGURES ############################
 ############################### BEST MODELS for each TREATMENT #################################
+################################################################################################
 
 #unfed control
 nm_UC <- nm_puuv_scaled %>% drop_na(prev_wt.deg) %>%
@@ -638,7 +654,6 @@ plot2 <- nm_UC %>% filter(Sex=="M") %>%
   ylab("PUUV Infection Status (IFA)") +
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 10)))
 
-library(cowplot)
 png(filename = "UC_prev.r-nr.deg_forMales.png",
     width=10, height=5, units="in", res=600)
 plot_grid(plot1, plot2, labels="AUTO", label_size = 22)
@@ -753,7 +768,6 @@ plot2 <- nm_FC %>% filter(Sex=="M" & season_breeder=="nonbreeder") %>%
   ylab("PUUV Infection Status (IFA)") +
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 10)))
 
-library(cowplot)
 png(filename = "FC_prev.rf.deg_forNonRepros.png",
     width=10, height=5, units="in", res=600)
 plot_grid(plot2, plot1, labels="AUTO", label_size = 22)
@@ -815,16 +829,17 @@ plot2 <- nm_FD %>% filter(Sex=="F" & season_breeder=="breeder") %>%
   ylab("PUUV Infection Status (IFA)") +
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 10)))
 
-library(cowplot)
 png(filename = "FD_prev.rf-rm.deg_forReproFemales.png",
     width=10, height=5, units="in", res=600)
 plot_grid(plot2, plot1, labels="AUTO", label_size = 22)
 dev.off()
 
+####-------------------- END -------------------------
 
-####### pretty OUTPUT MODEL SUMMARY #########
 
-library(gtsummary) #https://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html
+####### pretty MODEL OUTPUT SUMMARY (for tables in the Supplement) #########
+
+# library(gtsummary) #https://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html
 
 mod_UC %>% tbl_regression(exponentiate = TRUE,
                           pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
