@@ -1,3 +1,5 @@
+### ARCHIVED 3/23/24 - using verison "01-1_wanelik_farine_2022_functions.R"
+
 #Functions from supplementary materials of Wanelik & Farine 2022 "A new method for characterising shared space use..."
 
 #-------------------
