@@ -23,11 +23,11 @@ rm(list = ls())
 
 ##---------------- LOAD THE CAPTURE DATA ----------------------
 
-#load the 2021 fulltrap dataset as an R data file
-fulltrap <- readRDS(file = "fulltrap21_03.04.24.rds")
+# #load the 2021 fulltrap dataset as an R data file
+# fulltrap <- readRDS(file = "fulltrap21_03.04.24.rds")
 
-# #load the 2022 fulltrap dataset as an R data file
-# fulltrap <- readRDS(file = "fulltrap22_03.04.24.rds")
+#load the 2022 fulltrap dataset as an R data file
+fulltrap <- readRDS(file = "fulltrap22_03.04.24.rds")
 
 # #alternatively, load capture data from csv file and format data columns
 # fulltrap <- read.csv(here("fulltrap21_volecapturedata.csv")) %>%
@@ -504,39 +504,39 @@ dev.off()
 
 library(gtsummary) #https://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html
 
-#summary table 2021 summer
-fit.summer %>% tbl_regression(exponentiate = TRUE,
-                              pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
-  bold_p(t = 0.10) %>%
-  bold_labels() %>%
-  italicize_levels() %>%
-  gtsummary::as_tibble() %>%
-  write.csv(here("space_useGLM_TABLE_summer2021.csv"))
-#summary table 2021 fall
-fit.fall %>% tbl_regression(exponentiate = TRUE,
-                            pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
-  bold_p(t = 0.10) %>%
-  bold_labels() %>%
-  italicize_levels() %>% #stop here to get HTML output in RStudio
-  gtsummary::as_tibble() %>%
-  write.csv(here("space_useGLM_TABLE_fall2021.csv"))
-
-# #summary table 2022 summer
+# #summary table 2021 summer
 # fit.summer %>% tbl_regression(exponentiate = TRUE,
-#                                 pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
-#       bold_p(t = 0.10) %>%
-#       bold_labels() %>%
-#       italicize_levels() %>%
-#   gtsummary::as_tibble() %>%
-#   write.csv(here("space_useGLM_TABLE_summer2022.csv"))
-# #summary table 2022 fall
-# fit.fall %>% tbl_regression(exponentiate = TRUE,
 #                               pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
-#       bold_p(t = 0.10) %>%
-#       bold_labels() %>%
-#       italicize_levels() %>% #stop here to get HTML output in RStudio
+#   bold_p(t = 0.10) %>%
+#   bold_labels() %>%
+#   italicize_levels() %>%
 #   gtsummary::as_tibble() %>%
-#   write.csv(here("space_useGLM_TABLE_fall2022.csv"))
+#   write.csv(here("space_useGLM_TABLE_summer2021.csv"))
+# #summary table 2021 fall
+# fit.fall %>% tbl_regression(exponentiate = TRUE,
+#                             pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
+#   bold_p(t = 0.10) %>%
+#   bold_labels() %>%
+#   italicize_levels() %>% #stop here to get HTML output in RStudio
+#   gtsummary::as_tibble() %>%
+#   write.csv(here("space_useGLM_TABLE_fall2021.csv"))
+
+#summary table 2022 summer
+fit.summer %>% tbl_regression(exponentiate = TRUE,
+                                pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
+      bold_p(t = 0.10) %>%
+      bold_labels() %>%
+      italicize_levels() %>%
+  gtsummary::as_tibble() %>%
+  write.csv(here("space_useGLM_TABLE_summer2022.csv"))
+#summary table 2022 fall
+fit.fall %>% tbl_regression(exponentiate = TRUE,
+                              pvalue_fun = ~ style_pvalue(.x, digits = 2),) %>%
+      bold_p(t = 0.10) %>%
+      bold_labels() %>%
+      italicize_levels() %>% #stop here to get HTML output in RStudio
+  gtsummary::as_tibble() %>%
+  write.csv(here("space_useGLM_TABLE_fall2022.csv"))
 
 
 ##### GLM model diagnostics ######
