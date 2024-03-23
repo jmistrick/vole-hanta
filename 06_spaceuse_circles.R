@@ -84,24 +84,24 @@ year.labs <- as_labeller(c("2021" = "2021",
                           "2022" = "2022"))
 
 #plot and save
-png(filename = here("Figure_1_spaceuse_by_fxnl.png"), height=6, width = 11, units = "in", res=600)
+png(filename = here("Figure_1_spaceuse_by_fxnl.png"), height=6, width = 12, units = "in", res=600)
 ggplot(aes(x=season, y=mean, color=trt, shape=fxnl), data=spaceusedata) +
-  geom_jitter(size=4, width=0.15) +
+  geom_jitter(size=5, width=0.15) +
   scale_x_discrete(labels=c("summer"="Summer", "fall"="Autumn")) +
   scale_shape_manual(values=c(19, 1, 17, 2),
-                     labels=c("Female Breeder", "Female Nonbreeder", "Male Breeder", "Male Nonbreeder")) +
+                     labels=c("Reproductive Female", "Non-Reproductive Female", "Reproductive Male", "Non-Reproductive Male")) +
   scale_color_manual(values = c("#B2DF8A", "#33A02C", "#CAB2D6", "#6A3D9A"),
                      name = "Treatment",
                      labels = c("Unfed-Control", "Unfed-Deworm", "Fed-Control",  "Fed-Deworm")) +
   facet_grid(year ~ trt, labeller = labeller(trt=trt.labs, year=year.labs)) +
-  labs(y = paste("Mean Space Use", "(m\u00B2)"), x=NULL, shape="Functional Group") +
+  labs(y = paste("Mean Space Use", "(m\u00B2)"), x=NULL, shape="Functional Group:") +
   guides(color="none") +
   theme_bw() +
   theme(strip.text = element_text(size=16),
-        axis.title.y = element_text(size=16, margin=margin(0,20,0,0)),
+        axis.title.y = element_text(size=20, margin=margin(0,15,0,0)),
         axis.text = element_text(size=14, color="#808080"),
-        legend.text = element_text(size=13),
-        legend.title = element_text(size=14),
+        legend.text = element_text(size=14),
+        legend.title = element_text(size=15),
         legend.position = "bottom")
 dev.off()
 
