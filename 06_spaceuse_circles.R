@@ -1,44 +1,55 @@
-####### ------------ CONSTRUCT SPACE USE CIRCLES -----------------------
+### 4 - Plot Space Use Kernels
+### AUTHOR
+### 23 March 2024
+### this code accompanies the manuscript: "Ecological factors alter how spatial overlap predicts viral 
+  # infection dynamics in wild rodent populations"
+### Run using R version 4.3.2 (2023-10-31) -- "Eye Holes"
+
+### PURPOSE: 
+# THIS CODE constructs and plots visualizations of all space use kernel estimates for bank voles captured at each site 
+# in a given month. Then combines plots for months June-October at a given site in a given year as a composite figure
+
+###------------------------------------------------------------------------------
 
 # load packages
-library(here)
-library(tidyverse)
-library(igraph)
-library(lubridate)
-library(janitor)
-library(gridExtra)
-library(ggforce) #for geom_circle in ggplot
-library(cowplot)
+library(here) #v 1.0.1
+library(tidyverse) #v 2.0.0
+library(janitor) #v 2.2.0
+library(lubridate) #v 1.9.3
+library(igraph) #v 1.6.0
+library(gridExtra) #v 2.3
+library(ggforce) #for geom_circle in ggplot #v 0.4.1
+library(cowplot) #v 1.1.2
+
 
 #clear environment
 rm(list = ls())
 
+###------------------------------------------------------------------------------
 
-######## SPACE USE KERNELS ###########
-#negative sigmoidal curve calculated following Wanelik & Farine 2022: DOI 10.1007/s00265-022-03222-5
-#where the declining probability (P) of an individual being detected at a distance (d)
-#from the centroid of its space use kernel is given by:
+######## ABOUT SPACE USE KERNELS ###########
+#Space use is estimated using a negative sigmoidal curve following Wanelik & Farine 2022: DOI 10.1007/s00265-022-03222-5
+#where the declining probability (P) of an individual being detected at 
+#a distance (d) from the centroid of its space use kernel is given by:
 
 # P(d) = 1 / (1 + e^(-a-bd))
 
-#where "a" describes the overall size of the home range
-#"b" describes the steepness of the edge of the home range
-#and "d" is the logarithmic distance from the centroid
+#where (a) describes the overall size of the home range
+#(b) describes the steepness of the edge of the home range
+#and (d) is the logarithmic distance from the centroid
 
-# p <- 0.01 #e.g. probability of detection 1%
-# a <- params21[14,2]
-# b <- params21[14,3]
-#
-# (log((1/p)-1) + a) / (-b)
+#To visualize space use, I'm using the distance from the centroid (i.e. the radius) where the probability of detection (p) is 1%
+#and creating a circle with this radius to represent the space use kernel of the vole
 
-#### ^this equation is what I'm using to calculate e.g. the distance from the centroid with 1% probability of finding the animal,
-  ##just to plot a figure showing approx space use kernel size in order to visualize the overlaps
+# radius = (log((1/p)-1) + a) / (-b)
+
+###------------------------------------------------------------------------------
 
 
 
 ####----------- LOAD DATA -----------------
 
-#a and b parameters for space use kernels
+#a and b parameters of negative sigmoidal curve to estimate space use
 params21 <- readRDS(here("spaceuse_parameters21.rds")) %>% mutate(year=2021)
 params22 <- readRDS(here("spaceuse_parameters22.rds")) %>% mutate(year=2022)
 
@@ -59,13 +70,13 @@ trapdata22 <- ft22 %>% select(c(year, season, trt, site, month, tag, sex, season
 ####--------------------------------------
 
 
-### PLOT mean space use kernel size by functional group, trt, year ####
-### essentially using the params for each fxnl group and plotting space use size in area ####
+### SUMMARIZE mean space use kernel size (1% probability of detection) by functional group, trt, year ####
+### using the a and b params for each fxnl group and plotting space use size in area (meters^2) ####
 
 spaceusedata <- rbind(params21, params22) %>%
-  mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>%
+  mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>% #calculate the radius where probability of detection is 1%
   mutate(area = 2*pi*(rad_0.01^2)) %>%
-  mutate(area = area*10) %>%
+  mutate(area = area*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
   separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
   unite(trt, foodtrt, helmtrt) %>%
   unite(fxnl, sex, breeder) %>%
@@ -83,7 +94,7 @@ trt.labs <- as_labeller(c("unfed_control" = "Unfed-Control",
 year.labs <- as_labeller(c("2021" = "2021",
                           "2022" = "2022"))
 
-#plot and save
+#plot mean space use area by fxnl group, treatment, and year and save figure as png
 png(filename = here("Figure_1_spaceuse_by_fxnl.png"), height=6, width = 12, units = "in", res=600)
 ggplot(aes(x=season, y=mean, color=trt, shape=fxnl), data=spaceusedata) +
   geom_jitter(size=5, width=0.15) +
@@ -106,23 +117,18 @@ ggplot(aes(x=season, y=mean, color=trt, shape=fxnl), data=spaceusedata) +
 dev.off()
 
 
-#############################################
+####------------------------------ END --------------------------------
 
 
 
 
+######## PLOT SPACE USE KERNELS FOR ALL VOLES PER SITE in a given MONTH #############
+############## VISUALIZE MONTHS JUNE-OCTOBER PER SITE, PER YEAR #####################
 
 
+####----------- CREATE 'CIRCLES' df for PLOTTING SPACE USE KERNELS -----------------
 
-
-
-######## PLOT MULTIPLE SITES ACROSS MONTHS #############
-
-
-
-
-####----------- CREATE 'CIRCLES' df for PLOTTING -----------------
-
+#for 2021 data
 circles21 <- left_join(centroids21, trapdata21, by=c("tag", "month", "site")) %>%
   unite(stsb, season, trt, sex, season_breeder) %>% left_join(params21, by="stsb") %>%
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #make sure month is a factor
@@ -131,6 +137,7 @@ circles21 <- left_join(centroids21, trapdata21, by=c("tag", "month", "site")) %>
   unite(fxnl_grp, sex, season_breeder, remove=FALSE) %>%
   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b))
 
+#for 2022 data
 circles22 <- left_join(centroids22, trapdata22, by=c("tag", "month", "site")) %>%
   unite(stsb, season, trt, sex, season_breeder) %>% left_join(params22, by="stsb") %>%
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #make sure month is a factor
@@ -138,8 +145,6 @@ circles22 <- left_join(centroids22, trapdata22, by=c("tag", "month", "site")) %>
   unite(trt, food_trt, helm_trt) %>%
   unite(fxnl_grp, sex, season_breeder, remove=FALSE) %>%
   mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b))
-
-
 
 
 ##---------------- CREATE A NESTED LIST of CIRCLES (nested by site, month) --------------------
@@ -188,14 +193,14 @@ names(circles22_list) <- site_names
 
 ### OUTPUT: CIRCLES##_LIST is a nested list of length 12
 #1e level is all the sites (12)
-#2e level is all the months per site (5) excluding May
+#2e level is all the months (June-October) per site (5) excluding May
 
 
 ####----------------------------END----------------------------------
 
 
 
-####------------ PLOT [JUST CIRCLES] IN A LOOP (per YEAR)---------------------------
+####------------ PLOT SPACE USE KERNELS of all VOLES/MONTH/SITE/YEAR IN A LOOP ---------------------------
 
 #define colors for each fxnl group
 #because number of fxnl groups per plot varies, want to be sure that each group is always same color
@@ -206,7 +211,7 @@ fxnl.colors <- c(F_breeder="#c9184a", F_nonbreeder="#ffa9b9", M_breeder="#023e8a
 
 for(i in 1:length(circles21_list)) {
 
-  png(filename = paste("circles_", "rad0.01_fxnl_", names(circles21_list)[[i]], "_2021", ".png", sep = ""),
+  png(filename = paste("spaceuse_kernel_", "rad0.01_byfxnl_", names(circles21_list)[[i]], "_2021", ".png", sep = ""),
       width=18 , height=5, units="in", res=600)
 
   p <- list()
@@ -247,7 +252,7 @@ for(i in 1:length(circles21_list)) {
 
 for(i in 1:length(circles22_list)) {
 
-  png(filename = paste("circles_", "rad0.01_fxnl_", names(circles22_list)[[i]], "_2022", ".png", sep = ""),
+  png(filename = paste("spaceuse_kernel_", "rad0.01_byfxnl_", names(circles22_list)[[i]], "_2022", ".png", sep = ""),
       width=18 , height=5, units="in", res=600)
 
   p <- list()
@@ -283,7 +288,5 @@ for(i in 1:length(circles22_list)) {
 
 }
 
-#####----------------------------------------------------------------------------
-
-
+#####--------------------------------END--------------------------------------------
 
