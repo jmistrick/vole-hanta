@@ -1,11 +1,18 @@
-# Run using R version 4.3.2 "Eye Holes"
+### 02-1 FUNCTIONS: Factors Influencing Seasonal Space Use
+### AUTHOR
+### 23 March 2024
+### this code accompanies the manuscript: "Ecological factors alter how spatial overlap predicts viral 
+  # infection dynamics in wild rodent populations"
+### Run using R version 4.3.2 (2023-10-31) -- "Eye Holes"
 
-#Functions from supplementary materials of Wanelik & Farine 2022
-
+### PURPOSE: 
+#Functions to investigate factors influencing seasonal space use
+#Adapted from supplementary materials of Wanelik & Farine 2022
   # Wanelik, K.M., Farine, D.R. A new method for characterising shared space use networks using animal trapping data.
   # Behav Ecol Sociobiol 76, 127 (2022). https://doi.org/10.1007/s00265-022-03222-5
 
-#-------------------
+###------------------------------------------------------------------------------
+
 
 ## Function for calculating probability of detecting an individual at a distance, x, from its centroid
 ## Assuming a negative sigmoidal curve (defined by parameters a & b) describes the change in probability 
