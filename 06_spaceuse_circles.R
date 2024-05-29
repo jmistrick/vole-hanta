@@ -95,9 +95,11 @@ year.labs <- as_labeller(c("2021" = "2021",
                           "2022" = "2022"))
 
 #plot mean space use area by fxnl group, treatment, and year and save figure as png
-png(filename = here("Figure_1_spaceuse_by_fxnl.png"), height=6, width = 12, units = "in", res=600)
-ggplot(aes(x=season, y=mean, color=trt, shape=fxnl), data=spaceusedata) +
-  geom_jitter(size=5, width=0.15) +
+png(filename = here("Figure_1_spaceuse_by_fxnl_thicc.png"), height=6, width = 12, units = "in", res=600)
+ggplot(aes(x=season, y=mean, color=trt, shape=fxnl, group=fxnl), data=spaceusedata) +
+  # geom_jitter(size=5, width=0.15) +
+  geom_point(size=5, stroke=1.5) +
+  geom_line(size=0.7) +
   scale_x_discrete(labels=c("summer"="Summer", "fall"="Autumn")) +
   scale_shape_manual(values=c(19, 1, 17, 2),
                      labels=c("Reproductive Female", "Non-Reproductive Female", "Reproductive Male", "Non-Reproductive Male")) +
