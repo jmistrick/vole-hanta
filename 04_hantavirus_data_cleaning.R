@@ -149,6 +149,12 @@ mass21.22 <- rbind(mass21, mass22) %>%
   mutate(year = as.factor(year))
 #dataframe with the year, month, tag, puuv status, and body mass for all problemchildren
 problemmass <- left_join(problemfull, mass21.22, by=c("tag", "month", "year"))
+problemmass %>% group_by(tag) %>% arrange(year, month) %>% slice(1) %>% ungroup() %>% #one entry per problemchild
+  filter(mass<17) %>% #remove vole that was 22g at first cap and PUUV+ and vole that went 0-1-0 (firstcap mass=17g) - leaving 19 voles
+  summarise(mean = mean(mass),
+            sd = sd(mass),
+            min = min(mass),
+            max = max(mass))
 #write to csv for quick visualizing
 write.csv(problemmass, file="problemchildren_mass.csv")
 ####################################################################
