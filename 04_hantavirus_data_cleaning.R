@@ -13,6 +13,7 @@
 
 
 #load libraries
+library(here) #v 1.0.1
 library(tidyverse) #v 2.0.0
 library(janitor) #v 2.2.0
 library(lubridate) #v 1.9.3
@@ -131,6 +132,26 @@ problemchildren <- puuv_pos_neg$tag
 #filter netmetsPUUV to remove 'problemchildren' - status is inconclusive or maybe we detected MatAb
 netmets_puuv <- netmets_puuv %>%
   filter(!tag %in% problemchildren)
+
+####################### this probably doesn't need to be published #############################################
+###### BRIEFLY, who are the voles that convert PUUV + to - ? #######
+#pull the puuv data on "problem children"
+problemfull <- netmets_puuv %>% filter(tag %in% problemchildren) %>%
+  select(year, month, tag, puuv_ifa)
+#grab body mass from original fulltrap file (NOT PUBLISHED)
+mass21 <- readRDS(file="fulltrap21_ALL_03.04.24.rds")
+mass22 <- readRDS(file="fulltrap22_ALL_03.04.24.rds")
+#combine 2021 and 2022 data, grab only the columns we need, filter for only problemchildren voles
+mass21.22 <- rbind(mass21, mass22) %>% 
+  group_by(tag, year, month) %>% slice(1) %>% 
+  select(tag, year, month, mass) %>%
+  filter(tag %in% problemchildren) %>%
+  mutate(year = as.factor(year))
+#dataframe with the year, month, tag, puuv status, and body mass for all problemchildren
+problemmass <- left_join(problemfull, mass21.22, by=c("tag", "month", "year"))
+#write to csv for quick visualizing
+write.csv(problemmass, file="problemchildren_mass.csv")
+####################################################################
 
 ## NOW NETMETS_PUUV has ONLY the animals that:  ##
     #       1. Were caught in June-October
