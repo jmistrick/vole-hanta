@@ -181,6 +181,8 @@ png(filename = "FIG_wt.deg_by_month-trt.png", width=10, height=8, units="in", re
 netmets_full %>%
   mutate(month.rev = factor(month, levels=c("oct", "sept", "aug", "july", "june"))) %>%
   ggplot(aes(x=wt.deg, y=month.rev, fill=trt, color=trt)) +
+  scale_fill_manual(values = c("#B2DF8A", "#33A02C", "#CAB2D6", "#6A3D9A")) +
+  scale_color_manual(values = c("#B2DF8A", "#33A02C", "#CAB2D6", "#6A3D9A")) +
   geom_density_ridges(stat = "binline", alpha=0.5,
                       scale=0.9, rel_min_height = 0.001) +
   geom_vline(data=meandata, aes(xintercept=mean_x, color=trt), linewidth=1, 
