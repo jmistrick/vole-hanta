@@ -135,29 +135,29 @@ netmets_puuv <- netmets_puuv %>%
 
 ####################### this probably doesn't need to be published #############################################
 ###### BRIEFLY, who are the voles that convert PUUV + to - ? #######
-#pull the puuv data on "problem children"
-problemfull <- netmets_puuv %>% filter(tag %in% problemchildren) %>%
-  select(year, month, tag, puuv_ifa)
-#grab body mass from original fulltrap file (NOT PUBLISHED)
-mass21 <- readRDS(file="fulltrap21_ALL_03.04.24.rds")
-mass22 <- readRDS(file="fulltrap22_ALL_03.04.24.rds")
-#combine 2021 and 2022 data, grab only the columns we need, filter for only problemchildren voles
-mass21.22 <- rbind(mass21, mass22) %>% 
-  group_by(tag, year, month) %>% slice(1) %>% 
-  select(tag, year, month, mass) %>%
-  filter(tag %in% problemchildren) %>%
-  mutate(year = as.factor(year))
-#dataframe with the year, month, tag, puuv status, and body mass for all problemchildren
-problemmass <- left_join(problemfull, mass21.22, by=c("tag", "month", "year"))
-problemmass %>% group_by(tag) %>% arrange(year, month) %>% slice(1) %>% ungroup() %>% #one entry per problemchild
-  filter(mass<17) %>% #remove vole that was 22g at first cap and PUUV+ and vole that went 0-1-0 (firstcap mass=17g) - leaving 19 voles
-  summarise(mean = mean(mass),
-            sd = sd(mass),
-            min = min(mass),
-            max = max(mass))
-#write to csv for quick visualizing
-write.csv(problemmass, file="problemchildren_mass.csv")
-####################################################################
+# #pull the puuv data on "problem children"
+# problemfull <- netmets_puuv %>% filter(tag %in% problemchildren) %>%
+#   select(year, month, tag, puuv_ifa)
+# #grab body mass from original fulltrap file (NOT PUBLISHED)
+# mass21 <- readRDS(file="fulltrap21_ALL_03.04.24.rds")
+# mass22 <- readRDS(file="fulltrap22_ALL_03.04.24.rds")
+# #combine 2021 and 2022 data, grab only the columns we need, filter for only problemchildren voles
+# mass21.22 <- rbind(mass21, mass22) %>%
+#   group_by(tag, year, month) %>% slice(1) %>%
+#   select(tag, year, month, mass) %>%
+#   filter(tag %in% problemchildren) %>%
+#   mutate(year = as.factor(year))
+# #dataframe with the year, month, tag, puuv status, and body mass for all problemchildren
+# problemmass <- left_join(problemfull, mass21.22, by=c("tag", "month", "year"))
+# problemmass %>% group_by(tag) %>% arrange(year, month) %>% slice(1) %>% ungroup() %>% #one entry per problemchild
+#   filter(mass<17) %>% #remove vole that was 22g at first cap and PUUV+ and vole that went 0-1-0 (firstcap mass=17g) - leaving 19 voles
+#   summarise(mean = mean(mass),
+#             sd = sd(mass),
+#             min = min(mass),
+#             max = max(mass))
+# #write to csv for quick visualizing
+# write.csv(problemmass, file="problemchildren_mass.csv")
+###############################################################################################################
 
 ## NOW NETMETS_PUUV has ONLY the animals that:  ##
     #       1. Were caught in June-October
@@ -171,7 +171,9 @@ write.csv(problemmass, file="problemchildren_mass.csv")
 
 ## BEFORE GOING ON - please note:
 ## there are 170 entries from netmets21 and netmets22 that DO NOT make it in to netmets_PUUV
-## these are either animals without PUUV IFA data (120 entries) or animals with inconsistent IFA results (50 entries)
+## these are either animals without PUUV IFA data (120 entries) or animals with inconsistent IFA results (50 entries, 21 voles)
+## (animals without PUUV IFA data could have been <10g and no blood was taken or...
+## ...something else was wrong during processing and for whatever reason, we didn't get a blood sample or didn't have enough serum)
 ## HOWEVER - these animals were in the networks when they were constructed
 ##      so even once they're gone, other voles will have 'degree' measures to them
 ## I have decided this is okay, we know those 170 captures happened, voles were observed, so they should contribute to the networks
@@ -179,6 +181,42 @@ write.csv(problemmass, file="problemchildren_mass.csv")
 ## and the models are already running on a subset of the full netmets21 and netmets22 datasets since we can
 ## only model current PUUV infection probability on animals captured at least twice
 ## THUS, I have convinced myself (and you hopefully) that my decision is fine and we can proceed
+
+
+
+
+
+###################################################################
+#####################################################################
+##### WHAT WAS THE PREVALENCE OF PUUV in the sampled animals? ######
+puuv_prev <- netmets_puuv %>% 
+  group_by(year, tag) %>% #keep animals that were in capped both years in both years
+  arrange(month) %>%
+  slice(n()) %>% #keep the last entry for each tag
+  select(year, month, tag, puuv_ifa) %>%
+  mutate(puuv_num = case_when(puuv_ifa == 1 ~ 1,
+                              puuv_ifa == 0 ~ 0)) %>%
+  mutate(puuv_num = as.numeric(puuv_num)) %>% ungroup()
+
+n_distinct(puuv_prev$tag)
+#1367 UNIQUE sampled animals 
+
+#overwintered animals (10 animals were sampled in both 2021 and 2022)
+ow <- puuv_prev %>% group_by(tag) %>% mutate(n=length(tag)) %>% filter(n>1) %>%
+  arrange(tag)
+
+puuv_prev %>% 
+  group_by(year) %>%
+  summarise(pos = sum(puuv_num),
+            n = length(puuv_num),
+            prev = pos/n)
+
+#prevalence was 30.3% in 2021, 16.6% in 2022
+###################################################################
+#################################################################
+
+
+
 
 
 ###############################################################################
@@ -279,7 +317,7 @@ saveRDS(netmets_puuv, here("netmets_puuv_03.08.24.rds"))
 
 ### Random Summarized Data to Report in Manuscript ###
 
-##TOTAL number of animals captured, recapped etc in 2021 and 2022 
+##TOTAL number of animals captured, recapped etc in 2021 and 2022 (MAY-OCTOBER)
   # before detailing the subset of the data used for this specific study
 
 ## so that would be the fulltrap_ALL_03.04.24 dataset (see 01_...data_cleaning.R)
@@ -288,12 +326,14 @@ fulltrap21_ALL <- readRDS(file="fulltrap21_ALL_03.04.24.rds")
 fulltrap22_ALL <- readRDS(file="fulltrap22_ALL_03.04.24.rds")
 fulltrap21.22_ALL <- rbind(fulltrap21_ALL, fulltrap22_ALL)
 #4286 capture events (including WR) across MAY-Oct 2021 and 2022
-samples <- fulltrap21.22_ALL %>% drop_na(samp_id) %>% group_by(samp_id) %>% slice(1)
-#2309 captures with samples collected
-n_distinct(samples$tag)
-#1487 unique voles were sampled
-samp_recaps <- samples %>% filter(caps_per_life>1) %>% group_by(tag) %>% slice(1)
-#924 unique voles were sampled and recapped
+n_distinct(fulltrap21.22_ALL$tag) #1518 unique voles (including MAY)
+recapped <- fulltrap21.22_ALL %>% filter(caps_per_life>1)
+n_distinct(recapped$tag) #929 voles were recapped at least once
+## number captured in both years (how many overwintered 2021->2022)
+ow <- fulltrap21.22_ALL %>% group_by(year, tag) %>% slice(1) %>% ungroup() %>%
+  group_by(tag) %>% mutate(n=length(tag)) %>% filter(n>1) %>% arrange(tag)
+n_distinct(ow$tag) #12 voles in both 2021 and 2022
+
 
 ##-----------------
 
@@ -306,12 +346,19 @@ n_distinct(netmets21$tag) #742 voles in 2021
 nrow(netmets22) #1131 entries in 2022
 n_distinct(netmets22$tag) #744 voles in 2022
 
-#entries per year (in netmets_puuv --> i.e., those that do have PUUV data)
-  # i.e., the above counts minus the 170 entries removed for lacking or inconsistent PUUV data
-y1 <- netmets_puuv %>% filter(year=="2021") #1029 in 2021
-n_distinct(y1$tag) #683 unique voles
-y2 <- netmets_puuv %>% filter(year=="2022") #1061 in 2022
-n_distinct(y2$tag) #694 unique voles
+## "Spatial overlap networks were constructed with all voles captured in June-October with recorded sex 
+## and reproductive status data: 1129 captures (742 unique voles) in 2021 and 1131 captures (744 unique voles) in 2022."
+
+## THIS IS NO LONGER INCLUDED IN THE MANUSCRIPT:
+# #entries per year (in netmets_puuv --> i.e., those that do have PUUV data)
+#   # i.e., the above counts minus the 170 entries removed for lacking or inconsistent PUUV data
+# y1 <- netmets_puuv %>% filter(year=="2021") #1029 in 2021
+# n_distinct(y1$tag) #683 unique voles
+# y2 <- netmets_puuv %>% filter(year=="2022") #1061 in 2022
+# n_distinct(y2$tag) #694 unique voles
+# 
+# ## "Of these, we obtained consistent hantavirus serology results for 1,029 captures (683 unique voles) in June-October 
+# ## 2021 and 1,061 captures (694 unique voles) in June-October 2022."
 
 ##---------------
 
