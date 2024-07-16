@@ -182,9 +182,10 @@ params_list <- list()
         # Generating overlap network
         params <- data.frame(sex=c("M","F"),
                              a=c(coef(fit.males)[1],coef(fit.females)[1]),
-                             b=c(coef(fit.males)[2],coef(fit.females)[2]),
-                             aSE=c(coef(summary(fit.males))[1,"Std. Error"],coef(summary(fit.females))[1,"Std. Error"]),
-                             bSE=c(coef(summary(fit.males))[2,"Std. Error"],coef(summary(fit.females))[2,"Std. Error"]))
+                             b=c(coef(fit.males)[2],coef(fit.females)[2]))
+                            ## add the following back in if you want to use the propagate fxn in 06_spaceuse_circles for error bars
+                             # aSE=c(coef(summary(fit.males))[1,"Std. Error"],coef(summary(fit.females))[1,"Std. Error"]),
+                             # bSE=c(coef(summary(fit.males))[2,"Std. Error"],coef(summary(fit.females))[2,"Std. Error"])
 
         params <- params %>% mutate(season=season_lab, season_breeder=breeder_lab, trt=trt_lab)
 
