@@ -52,8 +52,10 @@ rm(list = ls())
 
 #a and b parameters of negative sigmoidal curve to estimate space use
 #params files generated in file: "02_construct_spatial_overlap_networks.R"
-params21 <- readRDS(here("spaceuse_parameters21.rds")) %>% mutate(year=2021) %>% select(!c(aSE, bSE)) #remove SE
-params22 <- readRDS(here("spaceuse_parameters22.rds")) %>% mutate(year=2022) %>% select(!c(aSE, bSE)) #remove SE
+params21 <- readRDS(here("spaceuse_parameters21.rds")) %>% mutate(year=2021) 
+  # %>% select(!c(aSE, bSE)) #remove SE if it was calculated in 02-1_functions_construct_overlap_networks
+params22 <- readRDS(here("spaceuse_parameters22.rds")) %>% mutate(year=2022) 
+  # %>% select(!c(aSE, bSE)) #remove SE if it was calculated in 02-1_functions_construct_overlap_networks
 
 #MONTHLY centroid locations for each vole
 #centroids files generated in file: "02_construct_spatial_overlap_networks.R"
@@ -103,7 +105,7 @@ ggplot(aes(x=season, y=mean, color=trt, shape=fxnl, group=fxnl), data=spaceuseda
   # geom_jitter(size=5, width=0.15) +
   geom_point(size=5, stroke=1.5) +
   # geom_errorbar(aes(ymin=mean-rad_sd_sq, ymax=mean+rad_sd_sq), width=.5,
-  #               position=position_dodge(0.05)) +
+  #               position=position_dodge(0.05)) + #add this in if you want error bars (see R script "std dev of HR radii")
   geom_line(size=0.7) +
   scale_x_discrete(labels=c("summer"="Summer", "fall"="Autumn")) +
   scale_shape_manual(values=c(19, 1, 17, 2),
@@ -298,102 +300,108 @@ for(i in 1:length(circles22_list)) {
 #####--------------------------------END--------------------------------------------
 
 
-#### July 16 2024 - MATT M-S wrote some code to help generate standard deviations for the space use estimates
-## It works, but the errors are so small on most of the fxnl group/trt/season combos that the error
-## bars don't show up in the figure OR they're NA for some of the nonbreeders OR there are 3-4 
-## where they're really big and tbh it just makes the whole figure uglier. So for now, I'm skipping this
-## unless a reviewer really wants it
-
-# library(propagate) #this library fucks with dplyr::separate() so make sure to load it before tidyverse
-
-#load the spaceuse parameters data and keep the SE estimates for a and b parameters
-paramsFULL21 <- readRDS(here("spaceuse_parameters21.rds")) %>% mutate(year=2021) #with SE
-paramsFULL22 <- readRDS(here("spaceuse_parameters22.rds")) %>% mutate(year=2022) #with SE
-
-#### use the propagate() function to MonteCarlo estimate the std dev of the home range kernel radius
-params21_list <- split(paramsFULL21, seq(nrow(paramsFULL21)))
-
-for(i in 1:length(params21_list)) {
-  
-  data <- params21_list[i]
-  
-  #pull the a parameter and its SE, b param and SE
-  a <- c(data[[1]][,2], data[[1]][,4])
-  b <- c(data[[1]][,3], data[[1]][,5])
-  
-  #data for propagate() needs to be one variable per column with rows of estimate, SE, DF (optional)
-  params <- cbind(a,b)
-  
-  #tryCatch() deals with errors in a loop 
-    # --> will continue on if propagate() throws an error instead of killing the loop
-  tryCatch(
-    
-    {out <- propagate::propagate(expression( (log((1/0.01)-1) + a) / (-b) ), params)
-    
-    ## this has estimated the RADIUS of 99% probability of capture -- with std dev
-    
-    #extract standard deviation from MonteCarlo simulation
-    rad_sd <- out$sim[2]*10 #multiply by 10 since radius was in "trap units" and traps are all 10m apart
-    # #extract mean estimate from MonteCarlo simulation
-    # rad_mean <- out$sim[1] #as.numeric() for just the value
-    
-    params21_list[[i]][7] <- rad_sd }, 
-    error=function(e) {params21_list[[i]][7] <- NA} )  #if propagate() throws an error, there will be no 7th column
-  
-}
-
-#rbind the list back into a df (rows without sd get NA)
-params21_sd <- do.call(bind_rows, params21_list) %>% rename(rad_sd=V7) %>%
-  mutate(rad_sd = ifelse(rad_sd>10, NA, rad_sd)) %>% #get rid of the crazy large estimates for now
-  mutate(rad_sd_sq = rad_sd^2) %>% #std dev of area should be units squared
-  #make columns here look like those in "spaceusedata" dataframe
-  separate_wider_delim(stsb, delim="_", names=c("season", "food", "helm", "sex", "breeder")) %>% 
-  unite("trt", food, helm, sep="_") %>% unite("fxnl", sex, breeder, sep="_") %>%
-  select(year, season, trt, fxnl, rad_sd_sq) #just keep the squared std dev
 
 
-#---------repeat for 2022-----------
-
-
-params22_list <- split(paramsFULL22, seq(nrow(paramsFULL22)))
-
-for(i in 1:length(params22_list)) {
-  
-  data <- params22_list[i]
-  
-  a <- c(data[[1]][,2], data[[1]][,4])
-  b <- c(data[[1]][,3], data[[1]][,5])
-  
-  params <- cbind(a,b)
-  
-  tryCatch(
-    
-    {out <- propagate::propagate(expression( (log((1/0.01)-1) + a) / (-b) ), params)
-    
-    ## this has estimated the RADIUS of 90% probability of capture -- with std dev
-    
-    #extract standard deviation from MonteCarlo simulation
-    rad_sd <- out$sim[2]*10 #as.numeric() for just the value
-    # #extract mean estimate from MonteCarlo simulation
-    # rad_mean <- as.numeric(out$sim[1])
-    
-    params22_list[[i]][7] <- rad_sd }, 
-    error=function(e) {params22_list[[i]][7] <- NA} )
-  
-}
-
-#rbind back into a df (rows without sd get NA)
-params22_sd <- do.call(bind_rows, params22_list) %>% rename(rad_sd=V7) %>%
-  mutate(rad_sd = ifelse(rad_sd>10, NA, rad_sd)) %>% #get rid of the crazy large estimates for now
-  mutate(rad_sd_sq = rad_sd^2) %>% #std dev of area should be units squared
-  #rearchitect columns to match "spaceusedata" df
-  separate_wider_delim(stsb, delim="_", names=c("season", "food", "helm", "sex", "breeder")) %>%
-  unite("trt", food, helm, sep="_") %>% unite("fxnl", sex, breeder, sep="_") %>%
-  select(year, season, trt, fxnl, rad_sd_sq) #just keep sd column
-
-#-------------------------------
-
-## join params_sd data to spaceusedata for plotting
-
-params2122_sd <- rbind(params21_sd, params22_sd)
-spaceusedata <- spaceusedata %>% left_join(params2122_sd, by=c("year", "season", "trt", "fxnl"))
+# #### July 16 2024 - MATT M-S wrote some code to help generate standard deviations for the space use estimates
+# ## It works, but the errors are so small on most of the fxnl group/trt/season combos that the error
+# ## bars don't show up in the figure OR they're NA for some of the nonbreeders OR there are 3-4 
+# ## where they're really big and tbh it just makes the whole figure uglier. So for now, I'm skipping this
+# ## unless a reviewer really wants it
+# 
+# ## this code would be best suited to be run right before the "SUMMARIZE mean space use kernel size..." figure
+# 
+# # library(propagate) #this library fucks with dplyr::separate() so make sure to load it before tidyverse
+# 
+# #load the spaceuse parameters data and keep the SE estimates for a and b parameters
+# paramsFULL21 <- readRDS(here("spaceuse_parameters21.rds")) %>% mutate(year=2021) #with SE
+# paramsFULL22 <- readRDS(here("spaceuse_parameters22.rds")) %>% mutate(year=2022) #with SE
+# 
+# #### use the propagate() function to MonteCarlo estimate the std dev of the home range kernel radius
+# params21_list <- split(paramsFULL21, seq(nrow(paramsFULL21)))
+# 
+# for(i in 1:length(params21_list)) {
+#   
+#   data <- params21_list[i]
+#   
+#   #pull the a parameter and its SE, b param and SE
+#   a <- c(data[[1]][,2], data[[1]][,4])
+#   b <- c(data[[1]][,3], data[[1]][,5])
+#   
+#   #data for propagate() needs to be one variable per column with rows of estimate, SE, DF (optional)
+#   params <- cbind(a,b)
+#   
+#   #tryCatch() deals with errors in a loop 
+#     # --> will continue on if propagate() throws an error instead of killing the loop
+#   tryCatch(
+#     
+#     {out <- propagate::propagate(expression( (log((1/0.01)-1) + a) / (-b) ), params)
+#     
+#     ## this has estimated the RADIUS of 99% probability of capture -- with std dev
+#     
+#     #extract standard deviation from MonteCarlo simulation
+#     rad_sd <- out$sim[2]*10 #multiply by 10 since radius was in "trap units" and traps are all 10m apart
+#     # #extract mean estimate from MonteCarlo simulation
+#     # rad_mean <- out$sim[1] #as.numeric() for just the value
+#     
+#     params21_list[[i]][7] <- rad_sd }, 
+#     error=function(e) {params21_list[[i]][7] <- NA} )  #if propagate() throws an error, there will be no 7th column
+#   
+# }
+# 
+# #rbind the list back into a df (rows without sd get NA)
+# params21_sd <- do.call(bind_rows, params21_list) %>% rename(rad_sd=V7) %>%
+#   mutate(rad_sd = ifelse(rad_sd>10, NA, rad_sd)) %>% #get rid of the crazy large estimates for now
+#   mutate(rad_sd_sq = rad_sd^2) %>% #std dev of area should be units squared
+#   #make columns here look like those in "spaceusedata" dataframe
+#   separate_wider_delim(stsb, delim="_", names=c("season", "food", "helm", "sex", "breeder")) %>% 
+#   unite("trt", food, helm, sep="_") %>% unite("fxnl", sex, breeder, sep="_") %>%
+#   select(year, season, trt, fxnl, rad_sd_sq) #just keep the squared std dev
+# 
+# 
+# #---------repeat for 2022-----------
+# 
+# 
+# params22_list <- split(paramsFULL22, seq(nrow(paramsFULL22)))
+# 
+# for(i in 1:length(params22_list)) {
+#   
+#   data <- params22_list[i]
+#   
+#   a <- c(data[[1]][,2], data[[1]][,4])
+#   b <- c(data[[1]][,3], data[[1]][,5])
+#   
+#   params <- cbind(a,b)
+#   
+#   tryCatch(
+#     
+#     {out <- propagate::propagate(expression( (log((1/0.01)-1) + a) / (-b) ), params)
+#     
+#     ## this has estimated the RADIUS of 90% probability of capture -- with std dev
+#     
+#     #extract standard deviation from MonteCarlo simulation
+#     rad_sd <- out$sim[2]*10 #as.numeric() for just the value
+#     # #extract mean estimate from MonteCarlo simulation
+#     # rad_mean <- as.numeric(out$sim[1])
+#     
+#     params22_list[[i]][7] <- rad_sd }, 
+#     error=function(e) {params22_list[[i]][7] <- NA} )
+#   
+# }
+# 
+# #rbind back into a df (rows without sd get NA)
+# params22_sd <- do.call(bind_rows, params22_list) %>% rename(rad_sd=V7) %>%
+#   mutate(rad_sd = ifelse(rad_sd>10, NA, rad_sd)) %>% #get rid of the crazy large estimates for now
+#   mutate(rad_sd_sq = rad_sd^2) %>% #std dev of area should be units squared
+#   #rearchitect columns to match "spaceusedata" df
+#   separate_wider_delim(stsb, delim="_", names=c("season", "food", "helm", "sex", "breeder")) %>%
+#   unite("trt", food, helm, sep="_") %>% unite("fxnl", sex, breeder, sep="_") %>%
+#   select(year, season, trt, fxnl, rad_sd_sq) #just keep sd column
+# 
+# #-------------------------------
+# 
+# ## join params_sd data to spaceusedata for plotting
+# 
+# params2122_sd <- rbind(params21_sd, params22_sd)
+# spaceusedata <- spaceusedata %>% left_join(params2122_sd, by=c("year", "season", "trt", "fxnl"))
+#
+#------- END FOR REALSIES ---------
