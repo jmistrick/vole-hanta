@@ -79,9 +79,9 @@ trapdata22 <- ft22 %>% select(c(year, season, trt, site, month, tag, sex, season
 ### using the a and b params for each fxnl group and plotting space use size in area (meters^2) ####
 
 spaceusedata <- rbind(params21, params22) %>%
-  mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b)) %>% #calculate the radius where probability of detection is 1%
-  mutate(area = 2*pi*(rad_0.01^2)) %>%
-  mutate(area = area*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
+  mutate(rad_0.01 = (log((1/0.5)-1) + a) / (-b)) %>% #calculate the radius where probability of detection is 1%
+  mutate(rad_m = rad_0.01*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
+  mutate(area = 2*pi*(rad_m^2)) %>%
   separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
   unite(trt, foodtrt, helmtrt) %>%
   unite(fxnl, sex, breeder) %>%
