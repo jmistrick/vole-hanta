@@ -75,12 +75,27 @@ trapdata22 <- ft22 %>% select(c(year, season, trt, site, month, tag, sex, season
 ####--------------------------------------
 
 
-### SUMMARIZE mean space use kernel size (1% probability of detection) by functional group, trt, year ####
+### SUMMARIZE mean space use kernel size (core and peripheral) by functional group, trt, year ####
 ### using the a and b params for each fxnl group and plotting space use size in area (meters^2) ####
 
-spaceusedata <- rbind(params21, params22) %>%
-  mutate(rad_0.01 = (log((1/0.5)-1) + a) / (-b)) %>% #calculate the radius where probability of detection is 1%
-  mutate(rad_m = rad_0.01*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
+#core space use - 50%
+spaceusedata_core <- rbind(params21, params22) %>%
+  mutate(rad_trap = (log((1/0.5)-1) + a) / (-b)) %>% #calculate the radius ("trap units") where probability of detection is 50%
+  mutate(rad_m = rad_trap*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
+  mutate(area = 2*pi*(rad_m^2)) %>%
+  separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
+  unite(trt, foodtrt, helmtrt) %>%
+  unite(fxnl, sex, breeder) %>%
+  group_by(year, season, trt, fxnl) %>%
+  summarize(mean = mean(area)) %>%
+  mutate(season = factor(season, levels=c("summer", "fall"))) %>%
+  mutate(trt = factor(trt, levels=c("unfed_control", "unfed_deworm",
+                                    "fed_control", "fed_deworm")))
+
+#peripheral space use - 95%
+spaceusedata_periph <- rbind(params21, params22) %>%
+  mutate(rad_trap = (log((1/0.05)-1) + a) / (-b)) %>% #calculate the radius ("trap units") where probability of detection is 95%
+  mutate(rad_m = rad_trap*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
   mutate(area = 2*pi*(rad_m^2)) %>%
   separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
   unite(trt, foodtrt, helmtrt) %>%
@@ -99,9 +114,35 @@ trt.labs <- as_labeller(c("unfed_control" = "Unfed-Control",
 year.labs <- as_labeller(c("2021" = "2021",
                           "2022" = "2022"))
 
-#plot mean space use area by fxnl group, treatment, and year and save figure as png
-png(filename = here("Figure_2_spaceuse_by_fxnl_thicc.png"), height=6, width = 12, units = "in", res=600)
-ggplot(aes(x=season, y=mean, color=trt, shape=fxnl, group=fxnl), data=spaceusedata) +
+#plot mean core space use area by fxnl group, treatment, and year and save figure as png
+png(filename = here("Figure_2_spaceuse_by_fxnl_core.png"), height=6, width = 12, units = "in", res=600)
+ggplot(aes(x=season, y=mean, color=trt, shape=fxnl, group=fxnl), data=spaceusedata_core) +
+  # geom_jitter(size=5, width=0.15) +
+  geom_point(size=5, stroke=1.5) +
+  # geom_errorbar(aes(ymin=mean-rad_sd_sq, ymax=mean+rad_sd_sq), width=.5,
+  #               position=position_dodge(0.05)) + #add this in if you want error bars (see R script "std dev of HR radii")
+  geom_line(size=0.7) +
+  scale_x_discrete(labels=c("summer"="Summer", "fall"="Autumn")) +
+  scale_shape_manual(values=c(19, 1, 17, 2),
+                     labels=c("Reproductive Female", "Non-Reproductive Female", "Reproductive Male", "Non-Reproductive Male")) +
+  scale_color_manual(values = c("#B2DF8A", "#33A02C", "#CAB2D6", "#6A3D9A"),
+                     name = "Treatment",
+                     labels = c("Unfed-Control", "Unfed-Deworm", "Fed-Control",  "Fed-Deworm")) +
+  facet_grid(year ~ trt, labeller = labeller(trt=trt.labs, year=year.labs)) +
+  labs(y = paste("Mean Space Use", "(m\u00B2)"), x=NULL, shape="Functional Group:") +
+  guides(color="none") +
+  theme_bw() +
+  theme(strip.text = element_text(size=16),
+        axis.title.y = element_text(size=20, margin=margin(0,15,0,0)),
+        axis.text = element_text(size=14, color="#808080"),
+        legend.text = element_text(size=14),
+        legend.title = element_text(size=15),
+        legend.position = "bottom")
+dev.off()
+
+#plot mean peripheral space use area by fxnl group, treatment, and year and save figure as png
+png(filename = here("Figure_2_spaceuse_by_fxnl_periph.png"), height=6, width = 12, units = "in", res=600)
+ggplot(aes(x=season, y=mean, color=trt, shape=fxnl, group=fxnl), data=spaceusedata_periph) +
   # geom_jitter(size=5, width=0.15) +
   geom_point(size=5, stroke=1.5) +
   # geom_errorbar(aes(ymin=mean-rad_sd_sq, ymax=mean+rad_sd_sq), width=.5,
@@ -137,23 +178,23 @@ dev.off()
 
 ####----------- CREATE 'CIRCLES' df for PLOTTING SPACE USE KERNELS -----------------
 
-#for 2021 data
+#for 2021 data - 95% peripheral HR
 circles21 <- left_join(centroids21, trapdata21, by=c("tag", "month", "site")) %>%
   unite(stsb, season, trt, sex, season_breeder) %>% left_join(params21, by="stsb") %>%
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #make sure month is a factor
   separate_wider_delim(stsb, delim="_", names=c("season", "food_trt", "helm_trt", "sex", "season_breeder")) %>%
   unite(trt, food_trt, helm_trt) %>%
   unite(fxnl_grp, sex, season_breeder, remove=FALSE) %>%
-  mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b))
+  mutate(rad_0.05 = (log((1/0.05)-1) + a) / (-b))
 
-#for 2022 data
+#for 2022 data - 95% peripheral HR
 circles22 <- left_join(centroids22, trapdata22, by=c("tag", "month", "site")) %>%
   unite(stsb, season, trt, sex, season_breeder) %>% left_join(params22, by="stsb") %>%
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #make sure month is a factor
   separate_wider_delim(stsb, delim="_", names=c("season", "food_trt", "helm_trt", "sex", "season_breeder")) %>%
   unite(trt, food_trt, helm_trt) %>%
   unite(fxnl_grp, sex, season_breeder, remove=FALSE) %>%
-  mutate(rad_0.01 = (log((1/0.01)-1) + a) / (-b))
+  mutate(rad_0.05 = (log((1/0.05)-1) + a) / (-b))
 
 
 ##---------------- CREATE A NESTED LIST of CIRCLES (nested by site, month) --------------------
@@ -220,7 +261,7 @@ fxnl.colors <- c(F_breeder="#c9184a", F_nonbreeder="#ffa9b9", M_breeder="#023e8a
 
 for(i in 1:length(circles21_list)) {
 
-  png(filename = paste("spaceuse_kernel_", "rad0.01_byfxnl_", names(circles21_list)[[i]], "_2021", ".png", sep = ""),
+  png(filename = paste("spaceuse_kernel_", "rad0.05_byfxnl_", names(circles21_list)[[i]], "_2021", ".png", sep = ""),
       width=18 , height=5, units="in", res=600)
 
   p <- list()
@@ -234,7 +275,7 @@ for(i in 1:length(circles21_list)) {
       ggplot() +
       geom_point(aes(x=x, y=y, color=fxnl_grp), show.legend=FALSE) +
       xlim(-1.5,13) + ylim(-1.5,13) +
-      geom_circle( aes(x0=x, y0=y, r=rad_0.01, fill=fxnl_grp), alpha=0.5) +
+      geom_circle( aes(x0=x, y0=y, r=rad_0.05, fill=fxnl_grp), alpha=0.5) +
       scale_color_manual(values=fxnl.colors) +
       scale_fill_manual(values=fxnl.colors) +
       geom_rect(aes(xmin = 0, xmax = 11, ymin = 0, ymax = 11),
@@ -261,7 +302,7 @@ for(i in 1:length(circles21_list)) {
 
 for(i in 1:length(circles22_list)) {
 
-  png(filename = paste("spaceuse_kernel_", "rad0.01_byfxnl_", names(circles22_list)[[i]], "_2022", ".png", sep = ""),
+  png(filename = paste("spaceuse_kernel_", "rad0.05_byfxnl_", names(circles22_list)[[i]], "_2022", ".png", sep = ""),
       width=18 , height=5, units="in", res=600)
 
   p <- list()
@@ -275,7 +316,7 @@ for(i in 1:length(circles22_list)) {
       ggplot() +
       geom_point(aes(x=x, y=y, color=fxnl_grp), show.legend=FALSE) +
       xlim(-1.5,13) + ylim(-1.5,13) +
-      geom_circle( aes(x0=x, y0=y, r=rad_0.01, fill=fxnl_grp), alpha=0.5) +
+      geom_circle( aes(x0=x, y0=y, r=rad_0.05, fill=fxnl_grp), alpha=0.5) +
       scale_color_manual(values=fxnl.colors) +
       scale_fill_manual(values=fxnl.colors) +
       geom_rect(aes(xmin = 0, xmax = 11, ymin = 0, ymax = 11),
