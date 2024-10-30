@@ -53,15 +53,18 @@ spaceusedata <- rbind(params21, params22) %>%
   mutate(trt = factor(trt, levels=c("unfed_control", "unfed_deworm",
                                     "fed_control", "fed_deworm")))
 
+##-----------------------------------------------
 
 #join all the data needed for HR circles
 homerange21 <- trapdata21 %>% rename(breeder = season_breeder) %>% 
   left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>%
-  left_join(centroids21, by=c("tag", "month", "site"))
+  left_join(centroids21, by=c("tag", "month", "site")) %>%
+  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct")))
 #join all the data needed for HR circles
 homerange22 <- trapdata22 %>% rename(breeder = season_breeder) %>% 
   left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>%
-  left_join(centroids22, by=c("tag", "month", "site"))
+  left_join(centroids22, by=c("tag", "month", "site")) %>%
+  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct")))
 
 
 ###---------------------------------------------
@@ -96,6 +99,7 @@ coords_sf <- st_as_sf(data, coords=c("x","y"))
 buff_sf <- st_buffer(coords_sf, dist=data$rad_95_trap) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
     #I think now the points are essentially polygons
     #with no CRS, the numeric dist is assumed to have units of the coordinates (which is fine, all "trap units")
+
 
 #plot with ggplot (can ploth with base R too - plot() )
 ggplot(buff_sf) + geom_sf(aes(fill=sex, alpha=0.5)) +
@@ -152,4 +156,96 @@ weighted_overlap <- st_intersection(single_sf, single_sf) %>%
 #pct_overlap answers the question: "how much of focal's HR is shared with neighbor?"
 
 
+##-----------------------------------
 
+
+#so what I want to do is separate homerange21 into a nested list by site/month (like I've done before)
+#then loop through each site, and loop through each month
+#and each month, make it into a sf (maybe the quicker way)
+#and then calculate weighted edges and maybe save those as a nested list for easy plotting?
+
+
+#a slick little something from stackoverflow to construct a nested list in one go #blessed
+site_month_list <- lapply(split(homerange21, homerange21$site, drop = TRUE),
+                              function(x) split(x, x[["month"]], drop = TRUE))
+
+#list for results
+pct_overlap_list <- list() 
+
+for(i in 1:length(site_month_list)){
+  
+  #for each site
+  print(i)
+  
+  #create a list to hold results per site
+  pct_overlap_list[[i]] <- list()
+  
+  for(j in 1:length(site_month_list[[i]])){
+    
+    print(j)
+    
+    pct_overlap_list[[i]][[j]] <- list()
+    
+    #pull the df for that site/month
+    data <- site_month_list[[i]][[j]]
+    
+    #make a matrix of just the coordinates
+    coords <- matrix(c(data$x,data$y), ncol = 2)
+    #convert to sf object
+    coords_sf <- st_as_sf(data, coords=c("x","y")) 
+    #buffer each point with the corresponding radius
+    buff_sf <- st_buffer(coords_sf, dist=data$rad_95_trap) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
+    #add the area
+    buff_sf$area <- st_area(buff_sf)
+    
+    #calculate overlap among all pairs
+    weighted_overlap <- st_intersection(buff_sf, buff_sf) %>% 
+      dplyr::mutate(area = st_area(.), 
+                    pct_overlap = area / area.1 ) %>% # "area" is the area of overlap, "area.1" is the total area of focal vole's HR 
+      tibble::as_tibble() %>%
+      dplyr::select(neighbor = tag, 
+                    focal = tag.1, 
+                    pct_overlap, ) %>% #selecting and changing column names at the same time 
+      filter(pct_overlap != 0) %>% #remove pairs with no overlap
+      filter(focal != neighbor) %>% #remove self-overlaps
+      select(focal, neighbor, pct_overlap)
+    
+    weighted_overlap$site <- names(site_month_list[i])
+    weighted_overlap$month <- names(site_month_list[[i]][j])
+    
+    pct_overlap_list[[i]][[j]] <- weighted_overlap
+    
+  }
+  
+  
+}
+
+
+#name the 12 1st order elements of overlap_network_list as the sites
+names(pct_overlap_list) <- names(site_month_list)
+
+#rename the sublist items (months) for each site
+for(i in 1:length(pct_overlap_list)){
+  names(pct_overlap_list[[i]]) <- c("june", "july", "aug", "sept", "oct")
+}
+
+
+
+#collate MONTHLY centroids results
+#make a list to store things
+pct_overlap_summary1 <- list()
+
+#loop across all sites and collapse the dfs per occasion into one df for the site
+for(i in 1:length(pct_overlap_list)){
+  
+  #for all 12 sites
+  summary <- do.call("rbind", pct_overlap_list[[i]])
+  pct_overlap_summary1[[i]] <- summary
+}
+
+#name the 12 1st order elements as their sites
+names(pct_overlap_summary1) <- names(site_month_list)
+
+## make net_mets_list_summary into freiggein huge df
+pct_overlap_summary <- do.call(rbind.data.frame, pct_overlap_summary1)
+row.names(pct_overlap_summary) <- NULL
