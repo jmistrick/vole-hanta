@@ -66,32 +66,45 @@ homerange22 <- trapdata22 %>% rename(breeder = season_breeder) %>%
 
 ###---------------------------------------------
 
-
+#this was useful, but I don't think I want to make each month a multipoint because it "sees" all the voles at a site as a single entity, 
+  #not several different polygons (which is what I did in the loop below)
 #buffer multipoint with different distances (https://stackoverflow.com/questions/47057316/st-buffer-multipoint-with-different-distance)
+
+#### JUST SOME LEARNING:
+#sfg = st_point / st_polygon (just one GEOMETRY - a point, a polygon, a multipolygon)
+#sfc <- is a simple feature list column - it's the COLUMN of multiple sf objects as a list (ie just the locations of the geometries)
+  #CLASS "sfc" "sfc_point"
+#st_sf <- makes the SIMPLE FEATURE object - which has a geometry column AND the attributes of each geometry (it's basically a special df) 
+  #CLASS "sf" "data.frame"
+
 
 #subset data for just one site/month (to get code running, will eventually need to get this all into ONE GIANT LOOP)
 #just pull the vole ID, radius, and x-y coordinates of monthly centroid for now
 data <- homerange21 %>% filter(month=="june", site=="ketunpesa") %>% ungroup() %>% 
-  mutate(id = tag) %>%
-  select(x, y, rad_95_trap, id)
+  select(x, y, rad_95_trap, tag, sex, breeder)
+
+### these steps will make an sf object for a site/month and plot it
+
 #make a matrix of just the coordinates
 coords <- matrix(c(data$x,data$y), ncol = 2)
 #convert to sf object
-tt <- st_as_sf(data, coords=c("x","y"))
+coords_sf <- st_as_sf(data, coords=c("x","y")) 
+    #st_as_sf() provide the object to be converted to sf (ie the df) - anything extra in the df becomes an attribute
+    #in the case of point data, coords= give the columns containing the coordinates (these points become the "geometry" column in the sf)
+    #if you don't provide a CRS, sf will treat as Euclidean space
 #buffer each point with the corresponding radius
-tt_buff <- sf::st_buffer(tt, data$rad_95_trap)
+buff_sf <- st_buffer(coords_sf, dist=data$rad_95_trap) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
+    #I think now the points are essentially polygons
+    #with no CRS, the numeric dist is assumed to have units of the coordinates (which is fine, all "trap units")
 
 #plot with ggplot (can ploth with base R too - plot() )
-ggplot(tt_buff) + geom_sf(aes(fill=rad_95_trap, alpha=0.5)) +
-  geom_sf_label(aes(label=id)) #include label with vole ID
+ggplot(buff_sf) + geom_sf(aes(fill=sex, alpha=0.5)) +
+  geom_sf_label(aes(label=tag)) #include label with vole ID
 
 
 ####----------------------
 
 # #the following code just needs the 'data' file which is currently just one site/month
-# data <- homerange21 %>% filter(month=="june", site=="ketunpesa") %>% ungroup() %>% 
-#   mutate(id = tag) %>%
-#   select(x, y, rad_95_trap, id)
 
 #basically here I want to make each vole's HR its own polygon, then combine all those polygons together into a single sf
 #NOT using a multipoint or multipolygon because that acts like all the circles are one layer and doesn't "see" overlaps the same way (I think)
@@ -120,32 +133,23 @@ single_sf <- do.call(rbind, poly_list)
 #and now some slick code someone else wrote to compute the pairwise overlap between all the polygons, and have directional % overlap
 #https://stackoverflow.com/questions/70009412/how-to-compute-all-pairwise-interaction-between-polygons-and-the-the-percentage
 # nOTE 'st_overlaps' will not capture polygons contained within another, for that you want 'st_intersects'
-#output is a matrix which is NOT SYMMETRICAL
-  #basically it's calling the sf twice and pairing all the circles against e/o or something
-pctoverlap_mat <- sf::st_intersection(single_sf, single_sf) %>% 
-  dplyr::mutate(
-    area = sf::st_area(.),
-    proportion = area / area.1 ) %>% #the area.1 is because both things called single_sf have an 'area' column ;)
-  tibble::as_tibble() %>%
-  dplyr::select(
-    id_1 = id,
-    id_2 = id.1,
-    proportion, ) %>% 
-  tidyr::pivot_wider(
-    names_from = id_1,
-    values_from = proportion,
-    values_fill = 0 )
 
-#pivot the matrix wider to be a long format table with focal vole, neighbor vole and...
-  #the amount of the focal's HR that is overlapped by the neighbor
-## I THINK I did things correctly so the right voles are focal vs neighbor, might be good to triple check though
-#this code also drops voles that do not overlap and removes self overlaps
-    # depending on how I make the edge list to make this into a network, might want the 0's back but definitely not the self-loops
-pctoverlap_mat %>% rename(focal = id_2) %>%
-  pivot_longer(!focal, names_to = "neighbor", values_to="pct_overlap") %>%
-  filter(pct_overlap>0) %>%
-  mutate(neighbor=as.numeric(neighbor)) %>% filter(neighbor != focal) %>%
+#regarding the sf::st_intersection bit: "sf::st_intersection() is vectorized. So it will find & return all the intersections of 
+    #the first & second argument for you. In this case, the two arguments are the same set of polygons."
+
+weighted_overlap <- st_intersection(single_sf, single_sf) %>% 
+  dplyr::mutate(area = st_area(.), 
+                pct_overlap = area / area.1 ) %>% # "area" is the area of overlap, "area.1" is the total area of focal vole's HR 
+  tibble::as_tibble() %>%
+  dplyr::select(neighbor = tag, 
+                focal = tag.1, 
+                pct_overlap, ) %>% #selecting and changing column names at the same time 
+  filter(pct_overlap != 0) %>% #remove pairs with no overlap
+  filter(focal != neighbor) %>% #remove self-overlaps
   select(focal, neighbor, pct_overlap)
+
+#the output is a tibble with three columns: focal, neighbor, and pct_overlap
+#pct_overlap answers the question: "how much of focal's HR is shared with neighbor?"
 
 
 
