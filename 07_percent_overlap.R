@@ -189,7 +189,7 @@ for(i in 1:length(site_month_list)){
     pct_overlap_list[[i]][[j]] <- list()
     
     #pull the df for that site/month
-    data <- site_month_list[[i]][[j]]
+    data <- site_month_list[[1]][[4]]
     
     #make a matrix of just the coordinates
     coords <- matrix(c(data$x,data$y), ncol = 2)
@@ -208,12 +208,15 @@ for(i in 1:length(site_month_list)){
       dplyr::select(neighbor = tag, 
                     focal = tag.1, 
                     pct_overlap, ) %>% #selecting and changing column names at the same time 
-      filter(pct_overlap != 0) %>% #remove pairs with no overlap
+      # filter(pct_overlap != 0) %>% #remove pairs with no overlap
       filter(focal != neighbor) %>% #remove self-overlaps
-      select(focal, neighbor, pct_overlap)
+      select(focal, neighbor, pct_overlap) %>%  #at this point it is a long-format edge list
+      pivot_wider(id_cols = focal, names_from = neighbor, values_from = pct_overlap, values_fill=0) %>%
+      column_to_rownames(var="focal") %>% #for tibble
+      as.matrix()
     
-    weighted_overlap$site <- names(site_month_list[i])
-    weighted_overlap$month <- names(site_month_list[[i]][j])
+    # weighted_overlap$site <- names(site_month_list[i])
+    # weighted_overlap$month <- names(site_month_list[[i]][j])
     
     pct_overlap_list[[i]][[j]] <- weighted_overlap
     
@@ -252,6 +255,9 @@ names(pct_overlap_summary) <- names(site_month_list)
 pct_overlap_summary21 <- do.call(rbind.data.frame, pct_overlap_summary)
 pct_overlap_summary21$year <- 2021
 row.names(pct_overlap_summary21) <- NULL
+
+saveRDS(pct_overlap_summary21, "pct_overlap_summary21.rds")
+
 
 ###################################################################
 ###################################################################
@@ -299,12 +305,15 @@ for(i in 1:length(site_month_list)){
       dplyr::select(neighbor = tag, 
                     focal = tag.1, 
                     pct_overlap, ) %>% #selecting and changing column names at the same time 
-      filter(pct_overlap != 0) %>% #remove pairs with no overlap
+      # filter(pct_overlap != 0) %>% #remove pairs with no overlap
       filter(focal != neighbor) %>% #remove self-overlaps
-      select(focal, neighbor, pct_overlap)
+      select(focal, neighbor, pct_overlap) %>%  #at this point it is a long-format edge list
+      pivot_wider(id_cols = focal, names_from = neighbor, values_from = pct_overlap, values_fill=0) %>%
+      column_to_rownames(var="focal") %>% #for tibble
+      as.matrix()
     
-    weighted_overlap$site <- names(site_month_list[i])
-    weighted_overlap$month <- names(site_month_list[[i]][j])
+    # weighted_overlap$site <- names(site_month_list[i])
+    # weighted_overlap$month <- names(site_month_list[[i]][j])
     
     pct_overlap_list[[i]][[j]] <- weighted_overlap
     
@@ -347,3 +356,5 @@ names(pct_overlap_summary) <- names(site_month_list)
 pct_overlap_summary22 <- do.call(rbind.data.frame, pct_overlap_summary)
 pct_overlap_summary22$year <- 2022
 row.names(pct_overlap_summary22) <- NULL
+
+saveRDS(pct_overlap_summary22, "pct_overlap_summary22.rds")
