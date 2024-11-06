@@ -9,6 +9,8 @@ library(here) #v 1.0.0
 library(tidyverse) #v 2.0.0
 library(sf)
 
+#clear environment
+rm(list = ls())
 
 
 ####----------- LOAD DATA ----------------- (copied from 06_spaceuse_circles.R)
@@ -69,7 +71,7 @@ homerange22 <- trapdata22 %>% rename(breeder = season_breeder) %>%
 
 ###---------------------------------------------
 
-# #this was useful, but I don't think I want to make each month a multipoint because it "sees" all the voles at a site as a single entity, 
+# #this was useful, but I don't think I want to make each month a multipoint because it "sees" all the voles at a site as a single entity,
 #   #not several different polygons (which is what I did in the loop below)
 # #buffer multipoint with different distances (https://stackoverflow.com/questions/47057316/st-buffer-multipoint-with-different-distance)
 # 
@@ -77,13 +79,13 @@ homerange22 <- trapdata22 %>% rename(breeder = season_breeder) %>%
 # #sfg = st_point / st_polygon (just one GEOMETRY - a point, a polygon, a multipolygon)
 # #sfc <- is a simple feature list column - it's the COLUMN of multiple sf objects as a list (ie just the locations of the geometries)
 #   #CLASS "sfc" "sfc_point"
-# #st_sf <- makes the SIMPLE FEATURE object - which has a geometry column AND the attributes of each geometry (it's basically a special df) 
+# #st_sf <- makes the SIMPLE FEATURE object - which has a geometry column AND the attributes of each geometry (it's basically a special df)
 #   #CLASS "sf" "data.frame"
 # 
 # 
-# #subset data for just one site/month (to get code running, will eventually need to get this all into ONE GIANT LOOP)
-# #just pull the vole ID, radius, and x-y coordinates of monthly centroid for now
-# data <- homerange21 %>% filter(month=="june", site=="ketunpesa") %>% ungroup() %>% 
+#subset data for just one site/month (to get code running, will eventually need to get this all into ONE GIANT LOOP)
+#just pull the vole ID, radius, and x-y coordinates of monthly centroid for now
+# data <- homerange22 %>% filter(month=="aug", site=="ketunpesa") %>% ungroup() %>%
 #   select(x, y, rad_95_trap, tag, sex, breeder)
 # 
 # ### these steps will make an sf object for a site/month and plot it
@@ -91,7 +93,7 @@ homerange22 <- trapdata22 %>% rename(breeder = season_breeder) %>%
 # #make a matrix of just the coordinates
 # coords <- matrix(c(data$x,data$y), ncol = 2)
 # #convert to sf object
-# coords_sf <- st_as_sf(data, coords=c("x","y")) 
+# coords_sf <- st_as_sf(data, coords=c("x","y"))
 #     #st_as_sf() provide the object to be converted to sf (ie the df) - anything extra in the df becomes an attribute
 #     #in the case of point data, coords= give the columns containing the coordinates (these points become the "geometry" column in the sf)
 #     #if you don't provide a CRS, sf will treat as Euclidean space
@@ -118,19 +120,19 @@ homerange22 <- trapdata22 %>% rename(breeder = season_breeder) %>%
 # 
 # #loop over df rows #https://campus.datacamp.com/courses/intermediate-r-for-finance/loops-3?ex=10
 # for(i in 1:nrow(data)){
-#   
+# 
 #   #pull each row (vole) as its own df
 #   df  <- as.data.frame(data[i,])
 #   coords <- matrix(c(df$x,df$y), ncol = 2) #centroid coordinates
 #   tt <- st_as_sf(df, coords=c("x","y"))
 #   sf <- st_buffer(tt, df$rad_95_trap) #buffer with radius
 #   sf$area = st_area(sf) #add area of polygon IN TRAP UNITS
-#   
+# 
 #   poly_list[[i]] <- sf #save result as one item of the list (list will have one item for each vole that site/month)
-#   
+# 
 # }
 # 
-# #convert list of sf's to one sf 
+# #convert list of sf's to one sf
 #   #(https://stackoverflow.com/questions/51312935/convert-a-list-of-sf-objects-into-one-sf)
 # single_sf <- do.call(rbind, poly_list)
 # 
@@ -138,16 +140,16 @@ homerange22 <- trapdata22 %>% rename(breeder = season_breeder) %>%
 # #https://stackoverflow.com/questions/70009412/how-to-compute-all-pairwise-interaction-between-polygons-and-the-the-percentage
 # # nOTE 'st_overlaps' will not capture polygons contained within another, for that you want 'st_intersects'
 # 
-# #regarding the sf::st_intersection bit: "sf::st_intersection() is vectorized. So it will find & return all the intersections of 
+# #regarding the sf::st_intersection bit: "sf::st_intersection() is vectorized. So it will find & return all the intersections of
 #     #the first & second argument for you. In this case, the two arguments are the same set of polygons."
 # 
-# weighted_overlap <- st_intersection(single_sf, single_sf) %>% 
-#   dplyr::mutate(area = st_area(.), 
-#                 pct_overlap = area / area.1 ) %>% # "area" is the area of overlap, "area.1" is the total area of focal vole's HR 
+# weighted_overlap <- st_intersection(single_sf, single_sf) %>%
+#   dplyr::mutate(area = st_area(.),
+#                 pct_overlap = area / area.1 ) %>% # "area" is the area of overlap, "area.1" is the total area of focal vole's HR
 #   tibble::as_tibble() %>%
-#   dplyr::select(neighbor = tag, 
-#                 focal = tag.1, 
-#                 pct_overlap, ) %>% #selecting and changing column names at the same time 
+#   dplyr::select(neighbor = tag,
+#                 focal = tag.1,
+#                 pct_overlap, ) %>% #selecting and changing column names at the same time
 #   filter(pct_overlap != 0) %>% #remove pairs with no overlap
 #   filter(focal != neighbor) %>% #remove self-overlaps
 #   select(focal, neighbor, pct_overlap)
@@ -189,7 +191,7 @@ for(i in 1:length(site_month_list)){
     pct_overlap_list[[i]][[j]] <- list()
     
     #pull the df for that site/month
-    data <- site_month_list[[1]][[4]]
+    data <- site_month_list[[i]][[j]]
     
     #make a matrix of just the coordinates
     coords <- matrix(c(data$x,data$y), ncol = 2)
@@ -205,20 +207,31 @@ for(i in 1:length(site_month_list)){
       dplyr::mutate(area = st_area(.), 
                     pct_overlap = area / area.1 ) %>% # "area" is the area of overlap, "area.1" is the total area of focal vole's HR 
       tibble::as_tibble() %>%
-      dplyr::select(neighbor = tag, 
-                    focal = tag.1, 
-                    pct_overlap, ) %>% #selecting and changing column names at the same time 
-      # filter(pct_overlap != 0) %>% #remove pairs with no overlap
+      dplyr::select(focal = tag, 
+                    neighbor = tag.1, 
+                    pct_overlap, ) #selecting and changing column names at the same time 
+      
+    #but we've lost voles that have no overlaps, so we have to add those back
+    tags <- data %>% group_by(tag) %>% slice(1) %>% select(tag) #df of all tags recorded for site/month
+    tags_iter <- do.call("rbind", replicate(length(tags$tag), tags, simplify = FALSE)) #all tags replicated for each trap
+    tags_rep <- tags_iter %>% arrange(tag) %>% rename(focal = tag)
+    tag_by_tag <- cbind(tags_rep, tags_iter) %>% rename(neighbor = tag) #every vole as focal, paired to every vole (incluing self) as neighbor
+    
+    #join the overlap to this complete list
+    weighted_overlap_full <- tag_by_tag %>% left_join(weighted_overlap, by=c("focal", "neighbor")) %>%
       filter(focal != neighbor) %>% #remove self-overlaps
-      select(focal, neighbor, pct_overlap) %>%  #at this point it is a long-format edge list
-      pivot_wider(id_cols = focal, names_from = neighbor, values_from = pct_overlap, values_fill=0) %>%
+      replace_na(list(pct_overlap=0)) %>% #replace NAs with 0 for overlaps that didn't occur
+      pivot_wider(id_cols = focal, names_from = neighbor, values_from = pct_overlap, values_fill=NA) %>% #convert long format edgelist to wide format adj matrix
       column_to_rownames(var="focal") %>% #for tibble
       as.matrix()
+    
+    #https://stackoverflow.com/questions/77115183/reorder-matrix-rows-and-columns-based-on-alphabetical-order-of-colnames-and-rown
+    weighted_overlap_full <- weighted_overlap_full[sort(rownames(weighted_overlap_full)), sort(colnames(weighted_overlap_full))]
     
     # weighted_overlap$site <- names(site_month_list[i])
     # weighted_overlap$month <- names(site_month_list[[i]][j])
     
-    pct_overlap_list[[i]][[j]] <- weighted_overlap
+    pct_overlap_list[[i]][[j]] <- weighted_overlap_full
     
   }
   
@@ -235,28 +248,29 @@ for(i in 1:length(pct_overlap_list)){
 }
 
 
+saveRDS(pct_overlap_list, "pct_overlap_list21.rds")
 
-#collate MONTHLY pct_overlap results
-#make a list to store things
-pct_overlap_summary <- list()
-
-#loop across all sites and collapse the dfs per month into one df for the site
-for(i in 1:length(pct_overlap_list)){
-  
-  #for all 12 sites
-  summary <- do.call("rbind", pct_overlap_list[[i]])
-  pct_overlap_summary[[i]] <- summary
-}
-
-#name the 12 1st order elements as their sites
-names(pct_overlap_summary) <- names(site_month_list)
-
-## make pct_overlap_summary into freiggein huge df
-pct_overlap_summary21 <- do.call(rbind.data.frame, pct_overlap_summary)
-pct_overlap_summary21$year <- 2021
-row.names(pct_overlap_summary21) <- NULL
-
-saveRDS(pct_overlap_summary21, "pct_overlap_summary21.rds")
+# #collate MONTHLY pct_overlap results
+# #make a list to store things
+# pct_overlap_summary <- list()
+# 
+# #loop across all sites and collapse the dfs per month into one df for the site
+# for(i in 1:length(pct_overlap_list)){
+#   
+#   #for all 12 sites
+#   summary <- do.call("rbind", pct_overlap_list[[i]])
+#   pct_overlap_summary[[i]] <- summary
+# }
+# 
+# #name the 12 1st order elements as their sites
+# names(pct_overlap_summary) <- names(site_month_list)
+# 
+# ## make pct_overlap_summary into freiggein huge df
+# pct_overlap_summary21 <- do.call(rbind.data.frame, pct_overlap_summary)
+# pct_overlap_summary21$year <- 2021
+# row.names(pct_overlap_summary21) <- NULL
+# 
+# saveRDS(pct_overlap_summary21, "pct_overlap_summary21.rds")
 
 
 ###################################################################
@@ -302,20 +316,31 @@ for(i in 1:length(site_month_list)){
       dplyr::mutate(area = st_area(.), 
                     pct_overlap = area / area.1 ) %>% # "area" is the area of overlap, "area.1" is the total area of focal vole's HR 
       tibble::as_tibble() %>%
-      dplyr::select(neighbor = tag, 
-                    focal = tag.1, 
-                    pct_overlap, ) %>% #selecting and changing column names at the same time 
-      # filter(pct_overlap != 0) %>% #remove pairs with no overlap
+      dplyr::select(focal = tag, 
+                    neighbor = tag.1, 
+                    pct_overlap, ) #selecting and changing column names at the same time 
+    
+    #but we've lost voles that have no overlaps, so we have to add those back
+    tags <- data %>% group_by(tag) %>% slice(1) %>% select(tag) #df of all tags recorded for site/month
+    tags_iter <- do.call("rbind", replicate(length(tags$tag), tags, simplify = FALSE)) #all tags replicated for each trap
+    tags_rep <- tags_iter %>% arrange(tag) %>% rename(focal = tag)
+    tag_by_tag <- cbind(tags_rep, tags_iter) %>% rename(neighbor = tag) #every vole as focal, paired to every vole (incluing self) as neighbor
+    
+    #join the overlap to this complete list
+    weighted_overlap_full <- tag_by_tag %>% left_join(weighted_overlap, by=c("focal", "neighbor")) %>%
       filter(focal != neighbor) %>% #remove self-overlaps
-      select(focal, neighbor, pct_overlap) %>%  #at this point it is a long-format edge list
-      pivot_wider(id_cols = focal, names_from = neighbor, values_from = pct_overlap, values_fill=0) %>%
+      replace_na(list(pct_overlap=0)) %>% #replace NAs with 0 for overlaps that didn't occur
+      pivot_wider(id_cols = focal, names_from = neighbor, values_from = pct_overlap, values_fill=NA) %>% #convert long format edgelist to wide format adj matrix
       column_to_rownames(var="focal") %>% #for tibble
       as.matrix()
+    
+    #https://stackoverflow.com/questions/77115183/reorder-matrix-rows-and-columns-based-on-alphabetical-order-of-colnames-and-rown
+    weighted_overlap_full <- weighted_overlap_full[sort(rownames(weighted_overlap_full)), sort(colnames(weighted_overlap_full))]
     
     # weighted_overlap$site <- names(site_month_list[i])
     # weighted_overlap$month <- names(site_month_list[[i]][j])
     
-    pct_overlap_list[[i]][[j]] <- weighted_overlap
+    pct_overlap_list[[i]][[j]] <- weighted_overlap_full
     
   }
   
@@ -335,26 +360,28 @@ for(i in 1:length(pct_overlap_list)){
 }
 
 
+saveRDS(pct_overlap_list, "pct_overlap_list22.rds")
 
 
-#collate MONTHLY pct_overlap results
-#make a list to store things
-pct_overlap_summary <- list()
 
-#loop across all sites and collapse the dfs per month into one df for the site
-for(i in 1:length(pct_overlap_list)){
-  
-  #for all 12 sites
-  summary <- do.call("rbind", pct_overlap_list[[i]])
-  pct_overlap_summary[[i]] <- summary
-}
-
-#name the 12 1st order elements as their sites
-names(pct_overlap_summary) <- names(site_month_list)
-
-## make pct_overlap_summary into freiggein huge df
-pct_overlap_summary22 <- do.call(rbind.data.frame, pct_overlap_summary)
-pct_overlap_summary22$year <- 2022
-row.names(pct_overlap_summary22) <- NULL
-
-saveRDS(pct_overlap_summary22, "pct_overlap_summary22.rds")
+# #collate MONTHLY pct_overlap results
+# #make a list to store things
+# pct_overlap_summary <- list()
+# 
+# #loop across all sites and collapse the dfs per month into one df for the site
+# for(i in 1:length(pct_overlap_list)){
+#   
+#   #for all 12 sites
+#   summary <- do.call("rbind", pct_overlap_list[[i]])
+#   pct_overlap_summary[[i]] <- summary
+# }
+# 
+# #name the 12 1st order elements as their sites
+# names(pct_overlap_summary) <- names(site_month_list)
+# 
+# ## make pct_overlap_summary into freiggein huge df
+# pct_overlap_summary22 <- do.call(rbind.data.frame, pct_overlap_summary)
+# pct_overlap_summary22$year <- 2022
+# row.names(pct_overlap_summary22) <- NULL
+# 
+# saveRDS(pct_overlap_summary22, "pct_overlap_summary22.rds")
