@@ -85,27 +85,27 @@ homerange22 <- trapdata22 %>% rename(breeder = season_breeder) %>%
 # 
 #subset data for just one site/month (to get code running, will eventually need to get this all into ONE GIANT LOOP)
 #just pull the vole ID, radius, and x-y coordinates of monthly centroid for now
-# data <- homerange22 %>% filter(month=="aug", site=="ketunpesa") %>% ungroup() %>%
-#   select(x, y, rad_95_trap, tag, sex, breeder)
-# 
-# ### these steps will make an sf object for a site/month and plot it
-# 
-# #make a matrix of just the coordinates
-# coords <- matrix(c(data$x,data$y), ncol = 2)
-# #convert to sf object
-# coords_sf <- st_as_sf(data, coords=c("x","y"))
-#     #st_as_sf() provide the object to be converted to sf (ie the df) - anything extra in the df becomes an attribute
-#     #in the case of point data, coords= give the columns containing the coordinates (these points become the "geometry" column in the sf)
-#     #if you don't provide a CRS, sf will treat as Euclidean space
-# #buffer each point with the corresponding radius
-# buff_sf <- st_buffer(coords_sf, dist=data$rad_95_trap) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
-#     #I think now the points are essentially polygons
-#     #with no CRS, the numeric dist is assumed to have units of the coordinates (which is fine, all "trap units")
-# 
-# 
-# #plot with ggplot (can ploth with base R too - plot() )
-# ggplot(buff_sf) + geom_sf(aes(fill=sex, alpha=0.5)) +
-#   geom_sf_label(aes(label=tag)) #include label with vole ID
+data <- homerange22 %>% filter(month=="july", site=="mustikka") %>% ungroup() %>%
+  select(x, y, rad_95_trap, tag, sex, breeder)
+
+### these steps will make an sf object for a site/month and plot it
+
+#make a matrix of just the coordinates
+coords <- matrix(c(data$x,data$y), ncol = 2)
+#convert to sf object
+coords_sf <- st_as_sf(data, coords=c("x","y"))
+    #st_as_sf() provide the object to be converted to sf (ie the df) - anything extra in the df becomes an attribute
+    #in the case of point data, coords= give the columns containing the coordinates (these points become the "geometry" column in the sf)
+    #if you don't provide a CRS, sf will treat as Euclidean space
+#buffer each point with the corresponding radius
+buff_sf <- st_buffer(coords_sf, dist=data$rad_95_trap) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
+    #I think now the points are essentially polygons
+    #with no CRS, the numeric dist is assumed to have units of the coordinates (which is fine, all "trap units")
+
+
+#plot with ggplot (can ploth with base R too - plot() )
+ggplot(buff_sf) + geom_sf(aes(fill=sex, alpha=0.5)) +
+  geom_sf_label(aes(label=tag)) #include label with vole ID
 # 
 # 
 # ####----------------------
