@@ -35,16 +35,13 @@ rm(list = ls())
   #creating the same weighted (NOW DIRECTED) adjacency matrices, but using circular HRs at the 95% capture probability from the
   #Wanelik/Farine space use kernels
 
-#load the 2021 overlap list
-pctoverlap_list21 <- readRDS(here("pct_overlap_list21.rds"))
-
-# #load the 2022 overlap list
-pctoverlap_list22 <- readRDS(here("pct_overlap_list22.rds"))
+#load the overlap list ("network data")
+pct_overlap_list21 <- readRDS(here("pct_overlap_list21.rds"))
+pct_overlap_list22 <- readRDS(here("pct_overlap_list22.rds"))
 
 
-#load fulltrap data (trapping metadata for each capture) 
+#load the fulltrap data (trapping metadata for each capture) 
 ft21 <- readRDS(here("fulltrap21_03.04.24.rds"))
-
 ft22 <- readRDS(here("fulltrap22_03.04.24.rds"))
 
 
@@ -63,17 +60,21 @@ ft22 <- readRDS(here("fulltrap22_03.04.24.rds"))
 
 library(igraph)
 
+data <- ft21
+networks_file <- pct_overlap_list21
+
+
 calculate_network_metrics <- function(data, networks_file, netmets_file){
 
   ##---------------- LOAD THE DATA ----------------------
   
   #load, clean the fulltrap dataset - add columns for sts and sb
-  fulltrap <- ft21 %>%
+  fulltrap <- data %>%
     unite("sts", season, trt, sex, remove=FALSE) %>% #add sts (season,treatment,sex) column to match params_summary
     unite("sb", sex, season_breeder, remove=FALSE) #add sb (sex, breeding status) column for degree by functional group
 
   # load the network data
-  overlap_network_list <- pctoverlap_list22
+  overlap_network_list <- networks_file
 
 
   ##--------------------------------------------
@@ -98,7 +99,7 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       print(names(overlap_network_list[[i]][j]))
       month.id <- names(overlap_network_list[[i]][j])
 
-      adjmat <- overlap_network_list[[4]][[3]]
+      adjmat <- overlap_network_list[[i]][[j]]
 
       #create WEIGHTED NETWORK from adjacency matrix
       inet <- graph_from_adjacency_matrix(adjmat, weighted = TRUE, mode="directed", diag = FALSE)
@@ -129,70 +130,68 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
       
       #####-------------- calculating sex- and repro-specific degree measures -----------------------
       
-      # ###### Calculate Male-degree, Female-degree #########
-      # 
-      # ###### Calculate Breeder(Reproductive)-degree, Nonbreeder(Nonreproductive)-degree #########
-      # # yes, I know I use different language in the manuscript vs here in the code, I'm indecisive and spent
-      # # too much time going back and forth. Just accept that anywhere I say "Breeder" here I mean "Reproductive"
-      # # and likewise with "nonbreeder" and "nonreproductive"  ¯\_(ツ)_/¯ 
-      # 
-      # #make a (new) network from the adj matrix
-      # g <- graph_from_adjacency_matrix(adjmat, mode="directed", weighted=TRUE, diag = FALSE)
-      # #technically, our adj matrix is symmetrical so the network is undirected,
-      # #BUT because I want count the number of ties going in/out from a given node,
-      # #So I need to have all the 'out' ties listed in one column of the edgelist (so effectively a directed edgelist)
-      # #So for these purposes, I built a directed network (but edge weights are symmetrical)
-      # 
-      # #subset metadata
-      # metadata <- fulltrap %>% #starts with fulltrap, need to get down to a 'traits' version
-      #   filter(site==site.id & month==month.id) %>%
-      #   group_by(tag) %>% slice(1)  #one entry per vole per month
-      # 
-      # #set "sex" as a vertex attribute
-      # g <- set.vertex.attribute(graph=g, name="sex", index=V(g), value=metadata$sex)
-      # #set "breeder" as a vertex attribute
-      # g <- set.vertex.attribute(graph=g, name="breeder", index=V(g), value=metadata$season_breeder)
-      # #set "sb" as vertex attribute (sb=season, breeder)
-      # g <- set.vertex.attribute(graph=g, name="sb", index=V(g), value=metadata$sb)
-      # #save vectors
-      # # focal_sex <- get.vertex.attribute(g, "sex") #female is 1, male is 2
-      # # focal_breed <- get.vertex.attribute(g, "breeder") #breeder is 1, nonbreeder is 2
-      # focal_id <- get.vertex.attribute(g, "name") #this isn't strictly necessary, just to make sure the focal vole is correct
-      # 
-      # ## code from Matt Michalska-Smith for male strength/female strength
-      # sex_to <- get.vertex.attribute(g, "sex")[get.edgelist(g, names=FALSE)[,2]]
-      # #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
-      # degree_to_M <- strength(g, mode="out", weights=((sex_to == "M")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT" (the "to" individual)
-      # degree_to_F <- strength(g, mode="out", weights=((sex_to == "F")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
-      # 
-      # ## code from Matt M-S for breeder/nonbreeder strength
-      # breed_to <- get.vertex.attribute(g, "breeder")[get.edgelist(g, names=FALSE)[,2]]
-      # #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
-      # degree_to_b <- strength(g, mode="out", weights=((breed_to == "breeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT" (the "to" individual)
-      # degree_to_nb <- strength(g, mode="out", weights=((breed_to == "nonbreeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
-      # 
-      # ## code from Matt M-S for sb strength across 4 pairings
-      # sb_to <- get.vertex.attribute(g, "sb")[get.edgelist(g, names=FALSE)[,2]]
-      # #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
-      # degree_to_mb <- strength(g, mode="out", weights=((sb_to == "M_breeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT" (the "to" individual)
-      # degree_to_mnb <- strength(g, mode="out", weights=((sb_to == "M_nonbreeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
-      # degree_to_fb <- strength(g, mode="out", weights=((sb_to == "F_breeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
-      # degree_to_fnb <- strength(g, mode="out", weights=((sb_to == "F_nonbreeder")*get.edge.attribute(g, "weight"))) #this need to be mode="OUT"
-      # 
-      # #network metrics to calculate
-      # site[[j]]$focal_id <- focal_id #not necessary, but a good check to make sure I'm pulling info for the right vole
-      # # site[[j]]$focal_sex <- focal_sex #not necessary, but a good check to make sure I'm pulling info for the right vole
-      # #degree by sex
-      # site[[j]]$F.deg <- degree_to_F
-      # site[[j]]$M.deg <- degree_to_M
-      # #degree by breeding status
-      # site[[j]]$b.deg <- degree_to_b
-      # site[[j]]$nb.deg <- degree_to_nb
-      # #degree by sex-breedingstatus
-      # site[[j]]$mb.deg <- degree_to_mb
-      # site[[j]]$mnb.deg <- degree_to_mnb
-      # site[[j]]$fb.deg <- degree_to_fb
-      # site[[j]]$fnb.deg <- degree_to_fnb
+      ###### Calculate Male-degree, Female-degree #########
+
+      ###### Calculate Breeder(Reproductive)-degree, Nonbreeder(Nonreproductive)-degree #########
+      # yes, I know I use different language in the manuscript vs here in the code, I'm indecisive and spent
+      # too much time going back and forth. Just accept that anywhere I say "Breeder" here I mean "Reproductive"
+      # and likewise with "nonbreeder" and "nonreproductive"  ¯\_(ツ)_/¯
+
+      #make a (new) network from the adj matrix
+      g <- graph_from_adjacency_matrix(adjmat, mode="directed", weighted=TRUE, diag = FALSE)
+      #network is directed, IN weights are the amt of overlap a focal has with a given neighbor
+      #code has been updated to calculate IN strength
+
+      #subset metadata
+      metadata <- fulltrap %>% #starts with fulltrap, need to get down to a 'traits' version
+        filter(site==site.id & month==month.id) %>%
+        group_by(tag) %>% slice(1)  #one entry per vole per month
+
+      #set "sex" as a vertex attribute
+      g <- set.vertex.attribute(graph=g, name="sex", index=V(g), value=metadata$sex)
+      #set "breeder" as a vertex attribute
+      g <- set.vertex.attribute(graph=g, name="breeder", index=V(g), value=metadata$season_breeder)
+      #set "sb" as vertex attribute (sb=season, breeder)
+      g <- set.vertex.attribute(graph=g, name="sb", index=V(g), value=metadata$sb)
+      #save vectors
+      # focal_sex <- get.vertex.attribute(g, "sex") #female is 1, male is 2
+      # focal_breed <- get.vertex.attribute(g, "breeder") #breeder is 1, nonbreeder is 2
+      focal_id <- get.vertex.attribute(g, "name") #this isn't strictly necessary, just to make sure the focal vole is correct
+
+      ## code from Matt Michalska-Smith for male strength/female strength
+      sex_to <- get.vertex.attribute(g, "sex")[get.edgelist(g, names=FALSE)[,1]] #[,1] for in strength
+      #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
+      degree_to_M <- strength(g, mode="in", weights=((sex_to == "M")*get.edge.attribute(g, "weight"))) #this need to be mode="IN" (bc network is weighted)
+      degree_to_F <- strength(g, mode="in", weights=((sex_to == "F")*get.edge.attribute(g, "weight"))) #this need to be mode="IN"
+
+      ## code from Matt M-S for breeder/nonbreeder strength
+      breed_to <- get.vertex.attribute(g, "breeder")[get.edgelist(g, names=FALSE)[,1]]
+      #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
+      degree_to_b <- strength(g, mode="in", weights=((breed_to == "breeder")*get.edge.attribute(g, "weight"))) #this need to be mode="IN" 
+      degree_to_nb <- strength(g, mode="in", weights=((breed_to == "nonbreeder")*get.edge.attribute(g, "weight"))) #this need to be mode="IN"
+
+      ## code from Matt M-S for sb strength across 4 pairings
+      sb_to <- get.vertex.attribute(g, "sb")[get.edgelist(g, names=FALSE)[,1]]
+      #since vertices already have meaningful names, call names=FALSE to return vertex indices instead
+      degree_to_mb <- strength(g, mode="in", weights=((sb_to == "M_breeder")*get.edge.attribute(g, "weight"))) #this need to be mode="IN" (the "from" individual)
+      degree_to_mnb <- strength(g, mode="in", weights=((sb_to == "M_nonbreeder")*get.edge.attribute(g, "weight"))) #this need to be mode="IN"
+      degree_to_fb <- strength(g, mode="in", weights=((sb_to == "F_breeder")*get.edge.attribute(g, "weight"))) #this need to be mode="IN"
+      degree_to_fnb <- strength(g, mode="in", weights=((sb_to == "F_nonbreeder")*get.edge.attribute(g, "weight"))) #this need to be mode="IN"
+
+      #network metrics to calculate
+      site[[j]]$focal_id <- focal_id #not necessary, but a good check to make sure I'm pulling info for the right vole
+      # site[[j]]$focal_sex <- focal_sex #not necessary, but a good check to make sure I'm pulling info for the right vole
+      #degree by sex
+      site[[j]]$F.deg <- degree_to_F
+      site[[j]]$M.deg <- degree_to_M
+      #degree by breeding status
+      site[[j]]$b.deg <- degree_to_b
+      site[[j]]$nb.deg <- degree_to_nb
+      #degree by sex-breedingstatus
+      site[[j]]$mb.deg <- degree_to_mb
+      site[[j]]$mnb.deg <- degree_to_mnb
+      site[[j]]$fb.deg <- degree_to_fb
+      site[[j]]$fnb.deg <- degree_to_fnb
       
       #####------------------ end sex- and repro- degree measures -------------------
       
