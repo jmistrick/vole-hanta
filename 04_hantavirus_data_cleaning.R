@@ -186,9 +186,11 @@ netmets_puuv <- netmets_puuv %>%
 
 
 
-###################################################################
-#####################################################################
+####################################################################
+####################################################################
 ##### WHAT WAS THE PREVALENCE OF PUUV in the sampled animals? ######
+
+## NOTE! This is only animals with sex and repro data and NETMETS data (JUNE-Oct)
 puuv_prev <- netmets_puuv %>% 
   group_by(year, tag) %>% #keep animals that were in capped both years in both years
   arrange(month) %>%
@@ -212,7 +214,7 @@ puuv_prev %>%
             prev = pos/n)
 
 #prevalence was 30.3% in 2021, 16.6% in 2022
-###################################################################
+#################################################################
 #################################################################
 
 
@@ -315,7 +317,7 @@ saveRDS(netmets_puuv, here("netmets_puuv_03.08.24.rds"))
 
 ##################################################################################################################
 
-### Random Summarized Data to Report in Manuscript ###
+### Additional Summarized Data to Report in Manuscript ###
 
 ##TOTAL number of animals captured, recapped etc in 2021 and 2022 (MAY-OCTOBER)
   # before detailing the subset of the data used for this specific study
@@ -334,7 +336,6 @@ ow <- fulltrap21.22_ALL %>% group_by(year, tag) %>% slice(1) %>% ungroup() %>%
   group_by(tag) %>% mutate(n=length(tag)) %>% filter(n>1) %>% arrange(tag)
 n_distinct(ow$tag) #12 voles in both 2021 and 2022
 
-
 ##-----------------
 
 ##DATA USED FOR VARIOUS STEPS OF THE ANALYSIS IN THE MANUSCRIPT:
@@ -345,6 +346,8 @@ nrow(netmets21) #1129 entries in 2021
 n_distinct(netmets21$tag) #742 voles in 2021
 nrow(netmets22) #1131 entries in 2022
 n_distinct(netmets22$tag) #744 voles in 2022
+
+n_distinct(netmets21.22$tag) #1476 unique voles in the networks, 10 are in both 2021 and 2022
 
 ## "Spatial overlap networks were constructed with all voles captured in June-October with recorded sex 
 ## and reproductive status data: 1129 captures (742 unique voles) in 2021 and 1131 captures (744 unique voles) in 2022."
