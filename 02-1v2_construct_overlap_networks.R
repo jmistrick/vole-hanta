@@ -7,6 +7,7 @@
 #load packages
 library(here)
 library(tidyverse)
+library(igraph)
 library(tidygraph)
 
 
@@ -36,12 +37,12 @@ rm(list = ls())
   #Wanelik/Farine space use kernels
 
 #load the overlap list ("network data")
-pct_overlap_list21 <- readRDS(here("pct_overlap_list21.rds"))
+# pct_overlap_list21 <- readRDS(here("pct_overlap_list21.rds"))
 pct_overlap_list22 <- readRDS(here("pct_overlap_list22.rds"))
 
 
 #load the fulltrap data (trapping metadata for each capture) 
-ft21 <- readRDS(here("fulltrap21_03.04.24.rds"))
+# ft21 <- readRDS(here("fulltrap21_03.04.24.rds"))
 ft22 <- readRDS(here("fulltrap22_03.04.24.rds"))
 
 
@@ -58,23 +59,18 @@ ft22 <- readRDS(here("fulltrap22_03.04.24.rds"))
 ## Output: netmets_file = dataframe of network metrics for every vole in every occasion it was captured
 
 
-library(igraph)
 
-data <- ft21
-networks_file <- pct_overlap_list21
-
-
-calculate_network_metrics <- function(data, networks_file, netmets_file){
+# calculate_network_metrics <- function(data, networks_file, netmets_file){
 
   ##---------------- LOAD THE DATA ----------------------
   
   #load, clean the fulltrap dataset - add columns for sts and sb
-  fulltrap <- data %>%
+  fulltrap <- ft22 %>%
     unite("sts", season, trt, sex, remove=FALSE) %>% #add sts (season,treatment,sex) column to match params_summary
     unite("sb", sex, season_breeder, remove=FALSE) #add sb (sex, breeding status) column for degree by functional group
 
   # load the network data
-  overlap_network_list <- networks_file
+  overlap_network_list <- pct_overlap_list22
 
 
   ##--------------------------------------------
@@ -256,12 +252,17 @@ calculate_network_metrics <- function(data, networks_file, netmets_file){
     rownames_to_column("name") %>% #row names are the sites, make that a column
     separate(name, c("site", NA)) %>% #separate the site part from the index and get rid of the index
     mutate(site = as.factor(site)) %>% #make site a factor
-    rename(tag=ids)
+    rename(tag=ids) %>%
+    mutate(year = unique(fulltrap$year)) %>%
+    relocate(year, .before=site)
 
-  #save it
-  saveRDS(wt_net_mets_summary, here(netmets_file))
+  #save it #non-loop version
+  saveRDS(wt_net_mets_summary, "pctover_netmets22.rds")
+  
+  # #save it #loop version
+  # saveRDS(wt_net_mets_summary, here(netmets_file))
 
 
-}
+# }
 
 
