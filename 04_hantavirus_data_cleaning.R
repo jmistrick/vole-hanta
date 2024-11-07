@@ -1,3 +1,5 @@
+##### NOVEMBER 2024 - blowing it all up to work with new pct overlap data
+
 ### 6 - Hantavirus Data Cleaning
 ### AUTHOR
 ### 23 March 2024
@@ -7,7 +9,7 @@
 
 ### PURPOSE: 
 # THIS CODE loads and cleans the hantavirus infection data (Immunofluorescence assay serology) and links
-# the infection data to the spatial data per vole generated in 02_construct_spatial_overlap_networks.R
+# the infection data to the spatial data per vole generated in 07_percent_overlap.R
 
 ###------------------------------------------------------------------------------
 
@@ -47,8 +49,8 @@ fulltrap21.22 <- rbind(fulltrap21, fulltrap22) %>%
   ungroup()
 
 ### LOAD NETWORK METRICS data
-netmets21 <- readRDS(file="network_metrics21.rds") %>% mutate(year=as.numeric(2021))
-netmets22 <- readRDS(file="network_metrics22.rds") %>% mutate(year=as.numeric(2022))
+netmets21 <- readRDS(file="pctover_netmets21.rds") 
+netmets22 <- readRDS(file="pctover_netmets22.rds") 
 #join 2021 and 2022
 netmets21.22 <- rbind(netmets21, netmets22)
 
@@ -59,45 +61,45 @@ netmets_full <- left_join(netmets21.22, fulltrap21.22, by=c("year", "site", "mon
          month = as.factor(month),
          month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #remove may from factor levels
   select(!c(focal_id)) %>% #remove duplicate column for PIT tag number
-  relocate(c(year, trt, site, month, n.node, tag, samp_id, sex, season_breeder), .before = wt.deg)
+  relocate(c(year, trt, site, month, n.node, tag, samp_id, sex, season_breeder), .before = wt.deg.in)
 
-saveRDS(netmets_full, here("netmets_full_03.08.24.rds"))
+saveRDS(netmets_full, here("netmets_full_11.07.24.rds"))
 
 # #load the most recent version of netmets_full
-# netmets_full <- readRDS(here("netmets_full_03.08.24.rds"))
+# netmets_full <- readRDS(here("netmets_full_11.07.24.rds"))
 
 
 #########################################   LOAD & CLEAN PUUV IFA DATA   ########################################
 
-#load PUUV IFA data
-puuv_data <- read.csv(here("puuv_ifa_06.07.23.csv")) %>%
-  clean_names %>%
-  #populate column of FINAL PUUV status
-  #kind of a pain, since samples could be run 1-4x but we want the result of the last run as the 'final' status
-  #columns are named as 'puuv_run1' 'puuv_run2' 'puuv_run3' 'puuv_run4'
-  mutate(FINAL_puuv = ifelse(!is.na(puuv_run4), as.character(puuv_run4),
-                             ifelse(!is.na(puuv_run3), as.character(puuv_run3),
-                                    ifelse(!is.na(puuv_run2), as.character(puuv_run2), as.character(puuv_run1))))) %>%
-  mutate(samp_id = as.numeric(id),
-         # date_run1 = as_date(date_run1, format= "%m/%d/%Y"),
-         # puuv_run1 = as.factor(puuv_run1),
-         # date_run2 = as_date(date_run2, format= "%m/%d/%Y"),
-         # puuv_run2 = as.factor(puuv_run2),
-         # date_run3 = as_date(date_run3, format= "%m/%d/%Y"),
-         # puuv_run3 = as.factor(puuv_run3),
-         # date_run4 = as_date(date_run4, format= "%m/%d/%Y"),
-         # puuv_run4 = as.factor(puuv_run4),
-         FINAL_puuv = as.factor(FINAL_puuv)) %>%
-  drop_na(FINAL_puuv) %>%
-  dplyr::select(FINAL_puuv, samp_id) %>%
-  rename(puuv_ifa = FINAL_puuv)
-#output is a df with two columns, sample ID and PUUV status (0,1)
+# #load PUUV IFA data
+# puuv_data <- read.csv(here("puuv_ifa_06.07.23.csv")) %>%
+#   clean_names %>%
+#   #populate column of FINAL PUUV status
+#   #kind of a pain, since samples could be run 1-4x but we want the result of the last run as the 'final' status
+#   #columns are named as 'puuv_run1' 'puuv_run2' 'puuv_run3' 'puuv_run4'
+#   mutate(FINAL_puuv = ifelse(!is.na(puuv_run4), as.character(puuv_run4),
+#                              ifelse(!is.na(puuv_run3), as.character(puuv_run3),
+#                                     ifelse(!is.na(puuv_run2), as.character(puuv_run2), as.character(puuv_run1))))) %>%
+#   mutate(samp_id = as.numeric(id),
+#          # date_run1 = as_date(date_run1, format= "%m/%d/%Y"),
+#          # puuv_run1 = as.factor(puuv_run1),
+#          # date_run2 = as_date(date_run2, format= "%m/%d/%Y"),
+#          # puuv_run2 = as.factor(puuv_run2),
+#          # date_run3 = as_date(date_run3, format= "%m/%d/%Y"),
+#          # puuv_run3 = as.factor(puuv_run3),
+#          # date_run4 = as_date(date_run4, format= "%m/%d/%Y"),
+#          # puuv_run4 = as.factor(puuv_run4),
+#          FINAL_puuv = as.factor(FINAL_puuv)) %>%
+#   drop_na(FINAL_puuv) %>%
+#   dplyr::select(FINAL_puuv, samp_id) %>%
+#   rename(puuv_ifa = FINAL_puuv)
+# #output is a df with two columns, sample ID and PUUV status (0,1)
+# 
+# # Save puuv_data to a rdata file
+# saveRDS(puuv_data, file = here("hantadata_06.09.23.rds"))
 
-# Save puuv_data to a rdata file
-saveRDS(puuv_data, file = here("hantadata_06.09.23.rds"))
-
-# # Restore puuv_data from the rdata file
-# puuv_data <- readRDS(file = "hantadata_06.09.23.rds")
+# Restore puuv_data from the rdata file
+puuv_data <- readRDS(file = "hantadata_06.09.23.rds")
 
 
 ##################################  COMBINE NETMETS data with PUUV data ######################################
@@ -186,99 +188,99 @@ netmets_puuv <- netmets_puuv %>%
 
 
 
-####################################################################
-####################################################################
-##### WHAT WAS THE PREVALENCE OF PUUV in the sampled animals? ######
-
-## NOTE! This is only animals with sex and repro data and NETMETS data (JUNE-Oct)
-puuv_prev <- netmets_puuv %>% 
-  group_by(year, tag) %>% #keep animals that were in capped both years in both years
-  arrange(month) %>%
-  slice(n()) %>% #keep the last entry for each tag
-  select(year, month, tag, puuv_ifa) %>%
-  mutate(puuv_num = case_when(puuv_ifa == 1 ~ 1,
-                              puuv_ifa == 0 ~ 0)) %>%
-  mutate(puuv_num = as.numeric(puuv_num)) %>% ungroup()
-
-n_distinct(puuv_prev$tag)
-#1367 UNIQUE sampled animals 
-
-#overwintered animals (10 animals were sampled in both 2021 and 2022)
-ow <- puuv_prev %>% group_by(tag) %>% mutate(n=length(tag)) %>% filter(n>1) %>%
-  arrange(tag)
-
-puuv_prev %>% 
-  group_by(year) %>%
-  summarise(pos = sum(puuv_num),
-            n = length(puuv_num),
-            prev = pos/n)
-
-#prevalence was 30.3% in 2021, 16.6% in 2022
-#################################################################
-#################################################################
-
-
+# ####################################################################
+# ####################################################################
+# ##### WHAT WAS THE PREVALENCE OF PUUV in the sampled animals? ######
+# 
+# ## NOTE! This is only animals with sex and repro data and NETMETS data (JUNE-Oct)
+# puuv_prev <- netmets_puuv %>% 
+#   group_by(year, tag) %>% #keep animals that were in capped both years in both years
+#   arrange(month) %>%
+#   slice(n()) %>% #keep the last entry for each tag
+#   select(year, month, tag, puuv_ifa) %>%
+#   mutate(puuv_num = case_when(puuv_ifa == 1 ~ 1,
+#                               puuv_ifa == 0 ~ 0)) %>%
+#   mutate(puuv_num = as.numeric(puuv_num)) %>% ungroup()
+# 
+# n_distinct(puuv_prev$tag)
+# #1367 UNIQUE sampled animals 
+# 
+# #overwintered animals (10 animals were sampled in both 2021 and 2022)
+# ow <- puuv_prev %>% group_by(tag) %>% mutate(n=length(tag)) %>% filter(n>1) %>%
+#   arrange(tag)
+# 
+# puuv_prev %>% 
+#   group_by(year) %>%
+#   summarise(pos = sum(puuv_num),
+#             n = length(puuv_num),
+#             prev = pos/n)
+# 
+# #prevalence was 30.3% in 2021, 16.6% in 2022
+# #################################################################
+# #################################################################
 
 
 
-###############################################################################
-### exploratory behavior of voles (breeders/non-breeders) ###
-## based off of VanderWaal et al 2013 ground squirrel ms: DOI:10.1007/s00265-013-1602-x ##
-#https://modelr.tidyverse.org/reference/add_predictions.html
 
-#subset data to one entry per vole per year
-onepertag <- netmets_puuv %>%
-  group_by(year, tag) %>% slice(1)
 
-#fit power model to ln(traps) ~ ln(caps)
-powmod <- lm(log(traps_per_life) ~ log(caps_per_life), data=onepertag)
-summary(powmod) #check it
-# # ln(y) = -0.01609 + 0.73633ln(x)
-# # y = 0.9840388x^0.73633
-
-# linmod <- lm(traps_per_life ~ caps_per_life, data=onepertag)
-# summary(linmod)
-#
-# AIC(linmod, powmod)
-# #yes, powmod is much better than linreg
-
-#estimate y-hat (predicted values)
-predicted.values <- predict(powmod, type="response")
-
-#visualize it - colors are observed, dotted line is predicted
-ggplot(aes(x=log(caps_per_life), y=log(traps_per_life), color=sex), data=onepertag) +
-  geom_jitter(alpha=0.5, size=1.5) +
-  geom_line(aes(y=predicted.values), linetype=2, color="black") +
-  labs(title="exploratoriness")
-
-#dataframe of observed values
-d <- data.frame(onepertag$tag, onepertag$caps_per_life, onepertag$traps_per_life) %>%
-  rename(caps_per_life = onepertag.caps_per_life,
-         traps_per_life = onepertag.traps_per_life,
-         tag = onepertag.tag)
-#add predicted values from power model
-d <- d %>% modelr::add_predictions(powmod) %>%
-  mutate(pred_exp = exp(pred))
-#calculate residuals (both log() and not-ln versions)
-onepertag_pred <- onepertag %>% left_join(d, by=c("tag", "caps_per_life", "traps_per_life")) %>%
-  mutate(explore = log(traps_per_life) - pred,
-         explore_exp = traps_per_life - pred_exp) #residual of obs traps_per_life - expected
-
-### EXPLORE is in terms of log(traps_per_life)  [ maybe this is scaled -1 to 1 because it's a ln? ]
-### EXPLORE_EXP is in terms of traps_per_life (so how many more/fewer traps were you in than expected)
-
-# #visualize
-# onepertag_pred %>%
-#   ggplot(aes(x=sex, y=explore, fill=sex)) +
-#   geom_violin() +
-#   geom_hline(yintercept = 0, color="black")
-
-#pull measures of exploratory behavior
-exploratory <- onepertag_pred %>% select(c("year", "tag", "explore"))
-#join to netmets df
-netmets_puuv <- netmets_puuv %>% left_join(exploratory, by=c("year", "tag"))
-
-############################################################################
+# ###############################################################################
+# ### exploratory behavior of voles (breeders/non-breeders) ###
+# ## based off of VanderWaal et al 2013 ground squirrel ms: DOI:10.1007/s00265-013-1602-x ##
+# #https://modelr.tidyverse.org/reference/add_predictions.html
+# 
+# #subset data to one entry per vole per year
+# onepertag <- netmets_puuv %>%
+#   group_by(year, tag) %>% slice(1)
+# 
+# #fit power model to ln(traps) ~ ln(caps)
+# powmod <- lm(log(traps_per_life) ~ log(caps_per_life), data=onepertag)
+# summary(powmod) #check it
+# # # ln(y) = -0.01609 + 0.73633ln(x)
+# # # y = 0.9840388x^0.73633
+# 
+# # linmod <- lm(traps_per_life ~ caps_per_life, data=onepertag)
+# # summary(linmod)
+# #
+# # AIC(linmod, powmod)
+# # #yes, powmod is much better than linreg
+# 
+# #estimate y-hat (predicted values)
+# predicted.values <- predict(powmod, type="response")
+# 
+# #visualize it - colors are observed, dotted line is predicted
+# ggplot(aes(x=log(caps_per_life), y=log(traps_per_life), color=sex), data=onepertag) +
+#   geom_jitter(alpha=0.5, size=1.5) +
+#   geom_line(aes(y=predicted.values), linetype=2, color="black") +
+#   labs(title="exploratoriness")
+# 
+# #dataframe of observed values
+# d <- data.frame(onepertag$tag, onepertag$caps_per_life, onepertag$traps_per_life) %>%
+#   rename(caps_per_life = onepertag.caps_per_life,
+#          traps_per_life = onepertag.traps_per_life,
+#          tag = onepertag.tag)
+# #add predicted values from power model
+# d <- d %>% modelr::add_predictions(powmod) %>%
+#   mutate(pred_exp = exp(pred))
+# #calculate residuals (both log() and not-ln versions)
+# onepertag_pred <- onepertag %>% left_join(d, by=c("tag", "caps_per_life", "traps_per_life")) %>%
+#   mutate(explore = log(traps_per_life) - pred,
+#          explore_exp = traps_per_life - pred_exp) #residual of obs traps_per_life - expected
+# 
+# ### EXPLORE is in terms of log(traps_per_life)  [ maybe this is scaled -1 to 1 because it's a ln? ]
+# ### EXPLORE_EXP is in terms of traps_per_life (so how many more/fewer traps were you in than expected)
+# 
+# # #visualize
+# # onepertag_pred %>%
+# #   ggplot(aes(x=sex, y=explore, fill=sex)) +
+# #   geom_violin() +
+# #   geom_hline(yintercept = 0, color="black")
+# 
+# #pull measures of exploratory behavior
+# exploratory <- onepertag_pred %>% select(c("year", "tag", "explore"))
+# #join to netmets df
+# netmets_puuv <- netmets_puuv %>% left_join(exploratory, by=c("year", "tag"))
+# 
+# ############################################################################
 
 
 
@@ -288,7 +290,8 @@ netmets_puuv <- netmets_puuv %>% left_join(exploratory, by=c("year", "tag"))
     # BUT! the previous month has to be in the same year (don't want 2021 fall to influence 2022 spring)
 netmets_puuv <- netmets_puuv %>% group_by(year, tag) %>%
   arrange(month, .by_group = TRUE) %>%
-  mutate(prev_wt.deg = lag(wt.deg, n=1),
+  mutate(prev_wt.deg.in = lag(wt.deg.in, n=1),
+         prev_bin.in.deg = lag(bin.in.deg, n=1),
          prev_F.deg = lag(F.deg, n=1),
          prev_M.deg = lag(M.deg, n=1),
          prev_b.deg = lag(b.deg, n=1),
@@ -307,10 +310,10 @@ netmets_puuv <- netmets_puuv %>% group_by(year, tag) %>%
 
 
 #save all the above code to here
-saveRDS(netmets_puuv, here("netmets_puuv_03.08.24.rds"))
+saveRDS(netmets_puuv, here("netmets_puuv_11.07.24.rds"))
 
 # #load netmets_puuv
-# netmets_puuv <- readRDS(here("netmets_puuv_03.08.24.rds"))
+# netmets_puuv <- readRDS(here("netmets_puuv_11.07.24.rds"))
 
 
 
