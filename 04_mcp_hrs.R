@@ -3,22 +3,26 @@
 #load libraries
 library(here)
 library(tidyverse)
-library(rgdal)
+# library(rgdal)
 library(sp)
 library(sf)
-library(adehabitatHR)
+library(adehabitatHR) #hi, I fuck with dplyr::select. I'm the problem, it's me.
+library(scales) #used for pretty plots in the loop
+library(Hmisc) #has capitalize() function
 
 #clear environment
 rm(list = ls())
 
 #load the fulltrap dataset (make sure it's the most recent version)
-# fulltrap <- readRDS(here("fulltrap21_03.04.24.rds"))
-fulltrap <- readRDS(here("fulltrap22_03.04.24.rds")) %>%
-  mutate(tag = str_replace(tag, "227207/219468", "227207"),
-         tag = str_replace(tag, "227049/219527", "227049"),
-         tag = str_replace(tag, "226483A", "226483"),
-         tag = str_replace(tag, "219464/227177", "219464")) 
-#omg, realized just now that plot() thinks these are hex codes for the color of the polygon
+fulltrap <- readRDS(here("fulltrap21_03.04.24.rds"))
+
+# #load fulltrap 2022 - and clean some PIT tags so ggplot doesn't get angry
+# #omg, realized just now that plot() thinks these are hex codes for the color of the polygon - LOVE IT
+# fulltrap <- readRDS(here("fulltrap22_03.04.24.rds")) %>%
+#   mutate(tag = str_replace(tag, "227207/219468", "227207"),
+#          tag = str_replace(tag, "227049/219527", "227049"),
+#          tag = str_replace(tag, "226483A", "226483"),
+#          tag = str_replace(tag, "219464/227177", "219464"))
 
 
 ################################  prep code  ####################################
@@ -35,8 +39,8 @@ mcp_trap <- fulltrap %>%
   filter(relocs >= 5) %>% #filter for at least 5 captures
   mutate(x.jitter = jitter(x),
          y.jitter = jitter(y)) %>% #jitter points
-  #easting (x coordinate) should be [(trap.letter.as.number-1)*10] + A1.easting
-  mutate(easting = (((x.jitter)-1)*10) + 398049) %>%
+  #easting (x coordinate) should be A1.easting - [(trap.letter.as.number-1)*10] 
+  mutate(easting = ( 398049 - ((x.jitter)-1)*10) ) %>% #minus because A1 is on the E side of the grid, so coordinates go W
   relocate(easting, .after = x.jitter) %>%
   #adjust y (northing) - the trap number
   #if remainder of x/2 is 0 (if x is even), multiply y by 2 - if else, multiply by 2 then subtract 1
@@ -44,7 +48,7 @@ mcp_trap <- fulltrap %>%
     (x %% 2) == 0, ((y.jitter-1)*10) + 6766143, ((y-1)*10) + 6766143)) %>%
   relocate(northing, .after = y.jitter) %>%
   dplyr::select(-c(x, y, x.jitter, y.jitter))
- 
+
 
 #pull out vole-level traits
 mcp_traits <- mcp_trap %>% group_by(tag) %>% arrange(occ.sess) %>% slice(1) %>%
@@ -61,15 +65,11 @@ mcp_list <- split(mcp_trap, f = mcp_trap$site)
 
 
 
-
 ######### Loop to Create SpatialPointsDF for each site - polygons for each resident vole in 2021 #############
 ### results are: one list of 12 spdf objects, one list of 12 dfs with polygon areas, .png file for each site ###
 
-library(scales) #used for pretty plots in the loop
-library(Hmisc) #has capitalize() function
-
 sitespdf_list <- list()
-HRarea_list <- list()
+MCParea_list <- list()
 
 for(i in 1:length(mcp_list)){
   
@@ -93,8 +93,8 @@ for(i in 1:length(mcp_list)){
   ## to get area of the bounding polygon for each MCP (ie 'HR' size)
   #area expressed in hectares if map projection was UTM
   mcpdata <- as.data.frame(cp)
-  #write the ID/HR area df to the HRarea_list
-  HRarea_list[[i]] <- mcpdata
+  #write the ID/MCP area df to the MCParea_list
+  MCParea_list[[i]] <- mcpdata
   
   # ## Plot the home ranges - just base R with no colors
   # plot(cp)
@@ -104,9 +104,10 @@ for(i in 1:length(mcp_list)){
   # Plot the home ranges and save to a png file in my working directory
   # library(scales) # Helps make polygons partly transparent using the alpha argument below
   
-  png(paste("caparea_", names(mcp_list)[i], "_2022", ".png", sep = ""))
+  png(paste("caparea_", names(mcp_list)[i], "_2021", ".png", sep = ""))
   
-  plot(cp, col = cp@data$id, pch = 16, main = paste(capitalize(names(mcp_list)[i]), "Capture Areas of Resident Voles", sep = " "))
+  plot(cp, col = cp@data$id, pch = 16, main = paste(capitalize(names(mcp_list)[i]), 
+                                                    "Capture Areas of Resident Voles", sep = " "))
   plot(cp, col = alpha(1:10, 0.5), add = TRUE)
   #add crosshairs for each recapture location
   plot(spdf, add=TRUE)
@@ -117,7 +118,7 @@ for(i in 1:length(mcp_list)){
 
 #name the 12 1st order elements as their sites
 names(sitespdf_list) <- names(mcp_list)
-names(HRarea_list) <- names(mcp_list)
+names(MCParea_list) <- names(mcp_list)
 
 ## this has created two lists and created png files for each site
   #first list is basically the 'cp' file for each site - it's the full spatialpointsdf of all polygons
@@ -125,22 +126,34 @@ names(HRarea_list) <- names(mcp_list)
 
 
 
-### for later analysis - make HRarea_list into df
-HRarea_summary <- do.call(rbind.data.frame, HRarea_list)
+### for later analysis - make MCParea_list into df
+MCParea_summary <- do.call(rbind.data.frame, MCParea_list)
 
 #clean up the df
-HRarea_summary <- HRarea_summary %>% 
+MCParea_summary <- MCParea_summary %>% 
   rownames_to_column("name") %>% #row names are the sites, make that a column
   separate(name, c("site", NA)) %>% #separate the site part from the index and get rid of the index
   mutate(site = as.factor(site),
          area.m = area*10000) %>% #make site a factor #convert area from hectares to m^2
   rename(tag = id)
 
-#join mcp_traits to HRarea_summary
-HRarea_summary <- HRarea_summary %>%
+#join mcp_traits to MCParea_summary
+MCParea_summary <- MCParea_summary %>%
   left_join(y=mcp_traits, by=c("tag", "site")) %>%
   dplyr::select(year, site, trt, tag, sex, area.m)
 
+
+# SAVE IT
+MCParea_summary21 <- MCParea_summary
+saveRDS(MCParea_summary21, "MCParea_summary21.rds")
+# LOAD IT
+MCParea_summary21 <- readRDS(here("MCParea_summary21.rds"))
+
+# # SAVE IT
+# MCParea_summary22 <- MCParea_summary
+# saveRDS(MCParea_summary22, "MCParea_summary22.rds")
+# # LOAD IT
+# MCParea_summary22 <- readRDS(here("MCParea_summary22.rds"))
 
 
 ########################################################
@@ -148,11 +161,43 @@ HRarea_summary <- HRarea_summary %>%
 ########################################################
 
 
+#combine 21 and 22 MCPs
+MCP_summary2122 <- rbind(MCParea_summary21, MCParea_summary22)
+
+#table of mean capture area (m^2) per sex
+MCP_summary2122 %>% group_by(trt, sex) %>%
+  summarise(avg_CA = mean(area.m),
+            n = length(tag))
+
+library(ggridges)
+
+#plot histogram of capture area for each sex group by trt, year
+MCP_summary2122 %>% 
+  ggplot(aes(x=area.m, y=sex, fill=sex)) +
+  geom_density_ridges(stat = "binline", bins = 20, scale = 0.95, draw_baseline = FALSE) +
+  facet_grid(year~trt)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 # ####################### in a loop for all 12 sites in 2021 ###########################
-# ####### Calculate area of overlap & % overlap (how much of each vole's HR overlaps with  another's) ###########
+# ####### Calculate area of overlap & % overlap (how much of each vole's HR overlaps with another's) ###########
 # 
 # 
 # pct_overlap_list <- list()
