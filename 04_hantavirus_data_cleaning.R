@@ -46,7 +46,7 @@ fulltrapALL <- rbind(fulltrap21, fulltrap22, fulltrap23) %>%
   mutate(firstcap = factor(firstcap)) %>% ungroup() %>%
 #keep one entry per tag,year,month; pull only relevant columns
   group_by(tag, year, month) %>% slice(1) %>%
-  select(year, site, trt, month, tag, samp_id, sex, season_breeder, traps_per_year, caps_per_year) %>%
+  dplyr::select(year, site, trt, month, tag, samp_id, sex, season_breeder, traps_per_year, caps_per_year) %>%
   ungroup()
 
 ### LOAD NETWORK METRICS data
@@ -62,7 +62,7 @@ netmets_full <- left_join(netmetsALL, fulltrapALL, by=c("year", "site", "month",
          year=as.factor(year),
          month = as.factor(month),
          month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #remove may from factor levels
-  select(!c(focal_id)) %>% #remove duplicate column for PIT tag number
+  dplyr::select(!c(focal_id)) %>% #remove duplicate column for PIT tag number
   relocate(c(year, trt, site, month, n.node, tag, samp_id, sex, season_breeder), .before = wt.deg.in)
 
 saveRDS(netmets_full, here("netmets_full_11.11.24.rds"))
@@ -110,7 +110,7 @@ puuv_data <- readRDS(file = "hantadata_11.11.24.rds")
 netmets_puuv <- left_join(netmets_full, puuv_data, by="samp_id") %>%
   #left join on netmets_full because I need to have network data
   relocate(puuv_ifa, .after="samp_id") %>%
-  select(!samp_id) %>%
+  dplyr::select(!samp_id) %>%
   drop_na(puuv_ifa) #drop any animals without puuv data
 
 
