@@ -38,12 +38,14 @@ rm(list = ls())
 
 #load the overlap list ("network data")
 # pct_overlap_list21 <- readRDS(here("pct_overlap_list21.rds"))
-pct_overlap_list22 <- readRDS(here("pct_overlap_list22.rds"))
+# pct_overlap_list22 <- readRDS(here("pct_overlap_list22.rds"))
+pct_overlap_list23 <- readRDS(here("pct_overlap_list23.rds"))
 
 
 #load the fulltrap data (trapping metadata for each capture) 
-# ft21 <- readRDS(here("fulltrap21_03.04.24.rds"))
-ft22 <- readRDS(here("fulltrap22_03.04.24.rds"))
+# ft21 <- readRDS(here("fulltrap21_11.11.24.rds"))
+# ft22 <- readRDS(here("fulltrap22_11.11.24.rds"))
+ft23 <- readRDS(here("fulltrap23_11.11.24.rds"))
 
 
 
@@ -64,13 +66,35 @@ ft22 <- readRDS(here("fulltrap22_03.04.24.rds"))
 
   ##---------------- LOAD THE DATA ----------------------
   
+  # #### 2021 ####
+  # 
+  # #load, clean the fulltrap dataset - add columns for sts and sb
+  # fulltrap <- ft21 %>%
+  #   unite("sts", season, trt, sex, remove=FALSE) %>% #add sts (season,treatment,sex) column to match params_summary
+  #   unite("sb", sex, season_breeder, remove=FALSE) #add sb (sex, breeding status) column for degree by functional group
+  # 
+  # # load the network data
+  # overlap_network_list <- pct_overlap_list21
+  
+  # #### 2022 ####
+  # 
+  # #load, clean the fulltrap dataset - add columns for sts and sb
+  # fulltrap <- ft22 %>%
+  #   unite("sts", season, trt, sex, remove=FALSE) %>% #add sts (season,treatment,sex) column to match params_summary
+  #   unite("sb", sex, season_breeder, remove=FALSE) #add sb (sex, breeding status) column for degree by functional group
+  # 
+  # # load the network data
+  # overlap_network_list <- pct_overlap_list22
+  
+  #### 2023 ####
+
   #load, clean the fulltrap dataset - add columns for sts and sb
-  fulltrap <- ft22 %>%
+  fulltrap <- ft23 %>%
     unite("sts", season, trt, sex, remove=FALSE) %>% #add sts (season,treatment,sex) column to match params_summary
     unite("sb", sex, season_breeder, remove=FALSE) #add sb (sex, breeding status) column for degree by functional group
 
   # load the network data
-  overlap_network_list <- pct_overlap_list22
+  overlap_network_list <- pct_overlap_list23
 
 
   ##--------------------------------------------
@@ -256,8 +280,16 @@ ft22 <- readRDS(here("fulltrap22_03.04.24.rds"))
     mutate(year = unique(fulltrap$year)) %>%
     relocate(year, .before=site)
 
-  #save it #non-loop version
-  saveRDS(wt_net_mets_summary, "pctover_netmets22.rds")
+  # # 2021 save it #non-loop version
+  # saveRDS(wt_net_mets_summary, "pctover_netmets21.rds")
+  
+  # # 2022 save it #non-loop version
+  # saveRDS(wt_net_mets_summary, "pctover_netmets22.rds")
+
+  # 2023 save it #non-loop version
+  saveRDS(wt_net_mets_summary, "pctover_netmets23.rds")
+  
+  
   
   # #save it #loop version
   # saveRDS(wt_net_mets_summary, here(netmets_file))
