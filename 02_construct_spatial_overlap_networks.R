@@ -29,6 +29,11 @@ rm(list = ls())
 ###-----------------------------------------------------------
 
 
+######## UPDATE NOVEMBER 2024 - ONLY NEED the params files and the centroids files
+    #### overlap networks are still generated, but not used (using pct_overlap)
+
+
+
 #######----------- GENERATE SPACE USE DISTRIBUTION PARAMETERS ----------###############
 #######---------------- CREATE SPATIAL OVERLAP NETWORKS ----------------###############
 #######------------------- CALCULATE NETWORK METRICS -------------------###############
@@ -40,7 +45,7 @@ source(here("02-1_functions_construct_overlap_networks.R"))
 ########### RUN FOR 2021 DATA ################
 
 #load the 2021 capture data from RDS
-fulltrap21 <- readRDS(here("fulltrap21_03.04.24.rds"))
+fulltrap21 <- readRDS(here("fulltrap21_11.11.24.rds"))
 
 
 #generate space use distribution parameters
@@ -60,12 +65,12 @@ create_overlap_networks(data = fulltrap21,
 # overlapnets21 <- readRDS(here("overlap_networks21.rds"))
 
 
-#calculate network metrics (weighted degree)
-calculate_network_metrics(data=fulltrap21,
-                          networks_file = "overlap_networks21.rds",
-                          netmets_file = "network_metrics21.rds")
-#view output file:
-# netmets21 <- readRDS(here("network_metrics21.rds"))
+# #calculate network metrics (weighted degree)
+# calculate_network_metrics(data=fulltrap21,
+#                           networks_file = "overlap_networks21.rds",
+#                           netmets_file = "network_metrics21.rds")
+# #view output file:
+# # netmets21 <- readRDS(here("network_metrics21.rds"))
 
 
 
@@ -73,7 +78,7 @@ calculate_network_metrics(data=fulltrap21,
 
 
 #load the 2022 capture data from RDS
-fulltrap22 <- readRDS(here("fulltrap22_03.04.24.rds"))
+fulltrap22 <- readRDS(here("fulltrap22_11.11.24.rds"))
 
 
 #generate space use distribution parameters
@@ -93,12 +98,43 @@ create_overlap_networks(data = fulltrap22,
 # overlapnets22 <- readRDS(here("overlap_networks22.rds"))
 
 
-#calculate network metrics (weighted degree)
-calculate_network_metrics(data=fulltrap22,
-                          networks_file = "overlap_networks22.rds",
-                          netmets_file = "network_metrics22.rds")
+# #calculate network metrics (weighted degree)
+# calculate_network_metrics(data=fulltrap22,
+#                           networks_file = "overlap_networks22.rds",
+#                           netmets_file = "network_metrics22.rds")
+# #view output file:
+# netmets22 <- readRDS(here("network_metrics22.rds"))
+
+
+########### REPEAT FOR 2023 DATA ################
+
+#load the 2023 capture data from RDS
+fulltrap23 <- readRDS(here("fulltrap23_11.11.24.rds"))
+
+
+#generate space use distribution parameters
+generate_params(data = fulltrap23,
+                params_file = "spaceuse_parameters23.rds")
 #view output file:
-netmets22 <- readRDS(here("network_metrics22.rds"))
+# params23 <- readRDS(here("spaceuse_parameters23.rds"))
+
+
+#create spatial overlap networks from capture data and parameters
+create_overlap_networks(data = fulltrap23,
+                        centroids_file = "monthly_centroids23.rds",
+                        params_file = "spaceuse_parameters23.rds",
+                        networks_file = "overlap_networks23.rds")
+#view output files:
+# centroids23 <- readRDS(here("monthly_centroids23.rds"))
+# overlapnets23 <- readRDS(here("overlap_networks23.rds"))
+
+
+# #calculate network metrics (weighted degree)
+# calculate_network_metrics(data=fulltrap23,
+#                           networks_file = "overlap_networks23.rds",
+#                           netmets_file = "network_metrics23.rds")
+# #view output file:
+# # netmets23 <- readRDS(here("network_metrics23.rds"))
 
 
 ####-----------------------------------------------------------------------------
