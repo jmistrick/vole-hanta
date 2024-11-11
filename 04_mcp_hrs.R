@@ -13,8 +13,8 @@ library(Hmisc) #has capitalize() function
 #clear environment
 rm(list = ls())
 
-#load the fulltrap dataset (make sure it's the most recent version)
-fulltrap <- readRDS(here("fulltrap21_03.04.24.rds"))
+#load the 2021 fulltrap dataset (make sure it's the most recent version)
+fulltrap <- readRDS(here("fulltrap21_11.11.24.rds"))
 
 # #load fulltrap 2022 - and clean some PIT tags so ggplot doesn't get angry
 # #omg, realized just now that plot() thinks these are hex codes for the color of the polygon - LOVE IT
@@ -23,6 +23,10 @@ fulltrap <- readRDS(here("fulltrap21_03.04.24.rds"))
 #          tag = str_replace(tag, "227049/219527", "227049"),
 #          tag = str_replace(tag, "226483A", "226483"),
 #          tag = str_replace(tag, "219464/227177", "219464"))
+
+#load the 2023 fulltrap dataset (make sure it's the most recent version)
+fulltrap <- readRDS(here("fulltrap23_11.11.24.rds")) %>%
+  mutate(tag = str_replace(tag, "219464/227177", "219464"))
 
 
 ################################  prep code  ####################################
@@ -33,10 +37,7 @@ fulltrap <- readRDS(here("fulltrap21_03.04.24.rds"))
 #let's use A1 at Puro because TREEBRIDGE! is the best - easting:398049	northing: 6791091
 
 mcp_trap <- fulltrap %>%
-  ##something is wrong and caps_per_life isn't always correct... FIX THIS!!
-  dplyr::select(!c(caps_per_life, traps_per_life)) %>% 
-  group_by(tag) %>% mutate(relocs = length(tag)) %>% 
-  filter(relocs >= 5) %>% #filter for at least 5 captures
+  filter(caps_per_year >= 5) %>% #filter for at least 5 captures (these captures EXCLUDING may)
   mutate(x.jitter = jitter(x),
          y.jitter = jitter(y)) %>% #jitter points
   #easting (x coordinate) should be A1.easting - [(trap.letter.as.number-1)*10] 
@@ -104,7 +105,7 @@ for(i in 1:length(mcp_list)){
   # Plot the home ranges and save to a png file in my working directory
   # library(scales) # Helps make polygons partly transparent using the alpha argument below
   
-  png(paste("caparea_", names(mcp_list)[i], "_2021", ".png", sep = ""))
+  png(paste("caparea_", names(mcp_list)[i], "_2023", ".png", sep = ""))
   
   plot(cp, col = cp@data$id, pch = 16, main = paste(capitalize(names(mcp_list)[i]), 
                                                     "Capture Areas of Resident Voles", sep = " "))
@@ -143,17 +144,23 @@ MCParea_summary <- MCParea_summary %>%
   dplyr::select(year, site, trt, tag, sex, area.m)
 
 
-# SAVE IT
-MCParea_summary21 <- MCParea_summary
-saveRDS(MCParea_summary21, "MCParea_summary21.rds")
-# LOAD IT
-MCParea_summary21 <- readRDS(here("MCParea_summary21.rds"))
+# # SAVE IT
+# MCParea_summary21 <- MCParea_summary
+# saveRDS(MCParea_summary21, "MCParea_summary21.rds")
+# # LOAD IT
+# MCParea_summary21 <- readRDS(here("MCParea_summary21.rds"))
 
 # # SAVE IT
 # MCParea_summary22 <- MCParea_summary
 # saveRDS(MCParea_summary22, "MCParea_summary22.rds")
 # # LOAD IT
 # MCParea_summary22 <- readRDS(here("MCParea_summary22.rds"))
+
+# SAVE IT
+MCParea_summary23 <- MCParea_summary
+saveRDS(MCParea_summary23, "MCParea_summary23.rds")
+# # LOAD IT
+# MCParea_summary23 <- readRDS(here("MCParea_summary23.rds"))
 
 
 ########################################################
