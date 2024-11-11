@@ -30,6 +30,7 @@ rm(list = ls())
 ######################### FORMAT DATA ##################################
 
 #load netmets_puuv data file
+#created in "04_hantavirus_data_cleaning"
 netmets_puuv <- readRDS(here("netmets_puuv_03.08.24.rds")) %>%
     rename(Sex = sex,
            Treatment = trt,
@@ -59,10 +60,12 @@ nm_puuv_short <- netmets_puuv %>% select(Year, Treatment, site, Previous_Month, 
 nm_puuv_scaled <- cbind(nm_puuv_short, scaled_numeric)  
 
 
+##### THE FOLLOWING CODE fits all possible candidate models per treatment, and is currently commented out
+##### See below for best-fit model per treatment
 
 # ######################## How does previous degree affect current infection status? ############################
 # 
-# 
+#
 # ####-------------------------------- UNFED CONTROL SITES, BOTH YEARS ------------------------------------------
 # 
 # nm_UC <- nm_puuv_scaled %>% drop_na(prev_wt.deg) %>%
@@ -654,6 +657,7 @@ plot2 <- nm_UC %>% filter(Sex=="M") %>%
   ylab("PUUV Infection Status (IFA)") +
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 10)))
 
+#Figure 4-A,B
 png(filename = "UC_prev.r-nr.deg_forMales.png",
     width=10, height=5, units="in", res=600)
 plot_grid(plot1, plot2, labels="AUTO", label_size = 22)
@@ -688,7 +692,7 @@ plot1 <- nm_UD %>% filter(Sex=="F") %>%
   ylab("PUUV Infection Status (IFA)") +
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 10)))
 
-#FOR THE SUPPLEMENT!
+#FOR THE SUPPLEMENT! Figure S2
 png(filename = "UD_prev.nr.deg_forFemales.png",
     width=5, height=5, units="in", res=600)
 plot1
@@ -768,6 +772,7 @@ plot2 <- nm_FC %>% filter(Sex=="M" & season_breeder=="nonbreeder") %>%
   ylab("PUUV Infection Status (IFA)") +
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 10)))
 
+#Figure S3
 png(filename = "FC_prev.rf.deg_forNonRepros.png",
     width=10, height=5, units="in", res=600)
 plot_grid(plot2, plot1, labels="AUTO", label_size = 22)
@@ -829,6 +834,7 @@ plot2 <- nm_FD %>% filter(Sex=="F" & season_breeder=="breeder") %>%
   ylab("PUUV Infection Status (IFA)") +
   theme(axis.title.y = element_text(margin = margin(t = 0, r = 10, b = 0, l = 10)))
 
+#Figure 4-C,D
 png(filename = "FD_prev.rf-rm.deg_forReproFemales.png",
     width=10, height=5, units="in", res=600)
 plot_grid(plot2, plot1, labels="AUTO", label_size = 22)
@@ -838,6 +844,7 @@ dev.off()
 
 
 ####### pretty MODEL OUTPUT SUMMARY (for tables in the Supplement) #########
+#Tables S2, S3, S4, S5
 
 # library(gtsummary) #https://www.danieldsjoberg.com/gtsummary/articles/tbl_regression.html
 
