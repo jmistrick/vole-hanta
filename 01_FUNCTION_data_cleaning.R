@@ -352,27 +352,6 @@ fulltrap_output = "fulltrap23_11.11.24.rds"
   ################ END FIRSTCAP/NEW ###########################
 
   
-  #create caps_per_year column - number of captures of that individual
-  fulltrap <- fulltrap %>%
-    group_by(tag) %>%
-    mutate(caps_per_year = length(tag)) %>%
-    ungroup()
-  #count of number of unique traps per animal in year
-  fulltrap <- fulltrap %>%
-    group_by(tag) %>%
-    mutate(traps_per_year = length(unique(trap))) %>%
-    relocate(traps_per_year, .after=caps_per_year) %>%
-    ungroup()
-  # #create a RECAPPED column (binary - were you recapped or not)
-  # fulltrap <- fulltrap %>%
-  #   group_by(tag) %>%
-  #   mutate(recapped = case_when(
-  #     caps_per_life == "1" ~ 0,
-  #     caps_per_life > "1" ~ 1)) %>%
-  #   mutate(recapped = factor(recapped)) %>%
-  #   relocate(recapped, .before=caps_per_life) %>%
-  #   ungroup()
-
   #season column
   fulltrap <- fulltrap %>%
     mutate(season = ifelse(month=="sept" | month=="oct", "fall", "summer")) %>%
@@ -407,7 +386,7 @@ fulltrap_output = "fulltrap23_11.11.24.rds"
                                     "breeder", season_breeder_init)) %>%
     mutate(season_breeder = factor(season_breeder, levels=c("breeder", "nonbreeder"))) %>%
     relocate(season_breeder, .after=season_breeder_init) %>%
-    select(!c(current_breeder, ever_breeder, season_breeder_init))
+    dplyr::select(!c(current_breeder, ever_breeder, season_breeder_init))
 
   #reorganize this unholy mess
   fulltrap <- fulltrap %>%
@@ -438,11 +417,34 @@ fulltrap_output = "fulltrap23_11.11.24.rds"
 
   #remove data that is not used for vole-hanta analysis
   fulltrap <- fulltrap %>%
-    select(!c(per, nip, preg, test, head, mass, fate)) %>% #remove data columns not needed for analysis
+    dplyr::select(!c(per, nip, preg, test, head, mass, fate)) %>% #remove data columns not needed for analysis
     filter(month != "may") %>% #drop may data since not all sites had captures (may data not used in analysis)
     mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #adjust levels
     drop_na(sex) %>% #remove animals with sex=NA (since we can't assign them a HR)
     drop_na(season_breeder) #remove animals without season_breeder data (since we can't assign them a HR)
+  
+  #### CAPS_PER_YEAR moved here since we cut out May data, avoid counting captures in May
+  
+  #create caps_per_year column - number of captures of that individual
+  fulltrap <- fulltrap %>%
+    group_by(tag) %>%
+    mutate(caps_per_year = length(tag)) %>%
+    ungroup()
+  #count of number of unique traps per animal in year
+  fulltrap <- fulltrap %>%
+    group_by(tag) %>%
+    mutate(traps_per_year = length(unique(trap))) %>%
+    relocate(traps_per_year, .after=caps_per_year) %>%
+    ungroup()
+  # #create a RECAPPED column (binary - were you recapped or not)
+  # fulltrap <- fulltrap %>%
+  #   group_by(tag) %>%
+  #   mutate(recapped = case_when(
+  #     caps_per_life == "1" ~ 0,
+  #     caps_per_life > "1" ~ 1)) %>%
+  #   mutate(recapped = factor(recapped)) %>%
+  #   relocate(recapped, .before=caps_per_life) %>%
+  #   ungroup()
 
   
   #save fulltrap to an rdata file so I can pull it for other scripts
