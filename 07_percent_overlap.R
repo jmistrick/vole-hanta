@@ -21,19 +21,26 @@ params21 <- readRDS(here("spaceuse_parameters21.rds")) %>% mutate(year=2021)
 # %>% select(!c(aSE, bSE)) #remove SE if it was calculated in 02-1_functions_construct_overlap_networks
 params22 <- readRDS(here("spaceuse_parameters22.rds")) %>% mutate(year=2022) 
 # %>% select(!c(aSE, bSE)) #remove SE if it was calculated in 02-1_functions_construct_overlap_networks
+params23 <- readRDS(here("spaceuse_parameters23.rds")) %>% mutate(year=2023) 
 
 #MONTHLY centroid locations for each vole
 #centroids files generated in file: "02_construct_spatial_overlap_networks.R"
 centroids21 <- readRDS(here("monthly_centroids21.rds")) %>% rename(tag = Tag_ID)
 centroids22 <- readRDS(here("monthly_centroids22.rds")) %>% rename(tag = Tag_ID)
+centroids23 <- readRDS(here("monthly_centroids23.rds")) %>% rename(tag = Tag_ID)
+
 
 #load fulltrap data (trapping metadata for each capture) - pull PIT tag, month, site
-ft21 <- readRDS(here("fulltrap21_03.04.24.rds"))
+ft21 <- readRDS(here("fulltrap21_11.11.24.rds"))
 trapdata21 <- ft21 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
   group_by(tag, month) %>% slice(1)
 
-ft22 <- readRDS(here("fulltrap22_03.04.24.rds"))
+ft22 <- readRDS(here("fulltrap22_11.11.24.rds"))
 trapdata22 <- ft22 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
+  group_by(tag, month) %>% slice(1)
+
+ft23 <- readRDS(here("fulltrap23_11.11.24.rds"))
+trapdata23 <- ft23 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
   group_by(tag, month) %>% slice(1)
 
 
@@ -43,7 +50,7 @@ trapdata22 <- ft22 %>% select(c(year, season, trt, site, month, tag, sex, season
 ### using the a and b params for each fxnl group and plotting space use size in area (meters^2) ####
 
 #space use data - included both core 50% and periphery 95% HR
-spaceusedata <- rbind(params21, params22) %>%
+spaceusedata <- rbind(params21, params22, params23) %>%
   mutate(rad_50_trap = (log((1/0.5)-1) + a) / (-b)) %>% #calculate the radius ("trap units") where probability of detection is 50%
   mutate(rad_50_m = rad_50_trap*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
   mutate(rad_95_trap = (log((1/0.05)-1) + a) / (-b)) %>% #calculate the radius ("trap units") where probability of detection is 95%
@@ -66,6 +73,11 @@ homerange21 <- trapdata21 %>% rename(breeder = season_breeder) %>%
 homerange22 <- trapdata22 %>% rename(breeder = season_breeder) %>% 
   left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>%
   left_join(centroids22, by=c("tag", "month", "site")) %>%
+  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct")))
+#join all the data needed for HR circles
+homerange23 <- trapdata23 %>% rename(breeder = season_breeder) %>% 
+  left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>%
+  left_join(centroids23, by=c("tag", "month", "site")) %>%
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct")))
 
 
@@ -161,7 +173,7 @@ homerange22 <- trapdata22 %>% rename(breeder = season_breeder) %>%
 ##-----------------------------------
 
 
-#so what I want to do is separate homerange21 into a nested list by site/month (like I've done before)
+#so what I want to do is separate homerange2X into a nested list by site/month (like I've done before)
 #then loop through each site, and loop through each month
 #and each month, make it into a sf (maybe the quicker way)
 #and then calculate weighted edges and maybe save those as a nested list for easy plotting?
@@ -385,3 +397,117 @@ saveRDS(pct_overlap_list, "pct_overlap_list22.rds")
 # row.names(pct_overlap_summary22) <- NULL
 # 
 # saveRDS(pct_overlap_summary22, "pct_overlap_summary22.rds")
+
+
+###################################################################
+###################################################################
+
+############ 2023 ##############
+
+#a slick little something from stackoverflow to construct a nested list in one go #blessed
+site_month_list <- lapply(split(homerange23, homerange23$site, drop = TRUE),
+                          function(x) split(x, x[["month"]], drop = TRUE))
+
+#list for results
+pct_overlap_list <- list() 
+
+for(i in 1:length(site_month_list)){
+  
+  #for each site
+  print(i)
+  
+  #create a list to hold results per site
+  pct_overlap_list[[i]] <- list()
+  
+  for(j in 1:length(site_month_list[[i]])){
+    
+    print(j)
+    
+    pct_overlap_list[[i]][[j]] <- list()
+    
+    #pull the df for that site/month
+    data <- site_month_list[[i]][[j]]
+    
+    #make a matrix of just the coordinates
+    coords <- matrix(c(data$x,data$y), ncol = 2)
+    #convert to sf object
+    coords_sf <- st_as_sf(data, coords=c("x","y")) 
+    #buffer each point with the corresponding radius
+    buff_sf <- st_buffer(coords_sf, dist=data$rad_95_trap) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
+    #add the area
+    buff_sf$area <- st_area(buff_sf)
+    
+    #calculate overlap among all pairs
+    weighted_overlap <- st_intersection(buff_sf, buff_sf) %>% 
+      dplyr::mutate(area = st_area(.), 
+                    pct_overlap = area / area.1 ) %>% # "area" is the area of overlap, "area.1" is the total area of focal vole's HR 
+      tibble::as_tibble() %>%
+      dplyr::select(focal = tag, 
+                    neighbor = tag.1, 
+                    pct_overlap, ) #selecting and changing column names at the same time 
+    
+    #but we've lost voles that have no overlaps, so we have to add those back
+    tags <- data %>% group_by(tag) %>% slice(1) %>% select(tag) #df of all tags recorded for site/month
+    tags_iter <- do.call("rbind", replicate(length(tags$tag), tags, simplify = FALSE)) #all tags replicated for each trap
+    tags_rep <- tags_iter %>% arrange(tag) %>% rename(focal = tag)
+    tag_by_tag <- cbind(tags_rep, tags_iter) %>% rename(neighbor = tag) #every vole as focal, paired to every vole (incluing self) as neighbor
+    
+    #join the overlap to this complete list
+    weighted_overlap_full <- tag_by_tag %>% left_join(weighted_overlap, by=c("focal", "neighbor")) %>%
+      filter(focal != neighbor) %>% #remove self-overlaps
+      replace_na(list(pct_overlap=0)) %>% #replace NAs with 0 for overlaps that didn't occur
+      pivot_wider(id_cols = focal, names_from = neighbor, values_from = pct_overlap, values_fill=NA) %>% #convert long format edgelist to wide format adj matrix
+      column_to_rownames(var="focal") %>% #for tibble
+      as.matrix()
+    
+    #https://stackoverflow.com/questions/77115183/reorder-matrix-rows-and-columns-based-on-alphabetical-order-of-colnames-and-rown
+    weighted_overlap_full <- weighted_overlap_full[sort(rownames(weighted_overlap_full)), sort(colnames(weighted_overlap_full))]
+    
+    # weighted_overlap$site <- names(site_month_list[i])
+    # weighted_overlap$month <- names(site_month_list[[i]][j])
+    
+    pct_overlap_list[[i]][[j]] <- weighted_overlap_full
+    
+  }
+  
+  
+}
+
+
+#name the 12 1st order elements of overlap_network_list as the sites
+names(pct_overlap_list) <- names(site_month_list)
+
+#rename the sublist items (months) for each site
+#accounting for the fact that most sites have 5 months of data but some have 4 (1 or 2 sites in 2023)
+for(i in 1:length(pct_overlap_list)){
+  ifelse( length(pct_overlap_list[[i]]) == 5,
+          names(pct_overlap_list[[i]]) <- c("june", "july", "aug", "sept", "oct"),
+          names(pct_overlap_list[[i]]) <- c("july", "aug", "sept", "oct") )
+}
+
+
+saveRDS(pct_overlap_list, "pct_overlap_list23.rds")
+
+
+
+# #collate MONTHLY pct_overlap results
+# #make a list to store things
+# pct_overlap_summary <- list()
+# 
+# #loop across all sites and collapse the dfs per month into one df for the site
+# for(i in 1:length(pct_overlap_list)){
+#   
+#   #for all 12 sites
+#   summary <- do.call("rbind", pct_overlap_list[[i]])
+#   pct_overlap_summary[[i]] <- summary
+# }
+# 
+# #name the 12 1st order elements as their sites
+# names(pct_overlap_summary) <- names(site_month_list)
+# 
+# ## make pct_overlap_summary into freiggein huge df
+# pct_overlap_summary23 <- do.call(rbind.data.frame, pct_overlap_summary)
+# pct_overlap_summary23$year <- 2023
+# row.names(pct_overlap_summary23) <- NULL
+# 
+# saveRDS(pct_overlap_summary23, "pct_overlap_summary23.rds")
