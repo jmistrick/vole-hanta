@@ -8,13 +8,13 @@
 ### PURPOSE: 
 ## This code cleans and combines the vole processing and the week recap data (input as .csv files) to be used as the
 ## main data input for downstream analyses (spatial networks, hantavirus models)
-## Inputs: processing data = "filename.csv" - (fed into here()) THIS SHOULD BE THE FULL 2021, 2022 CLEANED DATA
+## Inputs: processing data = "filename.csv" - (fed into here()) THIS SHOULD BE THE FULL 2021, 2022, 2023 CLEANED DATA
 ##          WRdata = "filename.csv" - same as above
-##          year = number (2021 or 2022) to get the year you want
+##          year = number (2021, 2022, 2023) to get the year you want
 ##          fulltrap_output = "filename.rds" - where to save the final, cleaned 'fulltrap' file
 ## Output: fulltrap file with all the capture/WR data combined, plus new stuff calculated for desired year
 
-#now running on 03.04.24 versions of vole_capture_data and week_recap_data
+#now running on 11.11.24 versions of vole_capture_data and week_recap_data
 #these versions are the most up-to-date with Katy Wearing's corrections to all 3 years of data (2021-2023)
 #all updates were discussed and confirmed by Katy W, Jasmine Veitch, Janine M, and Dyess Harp in Jan/Feb 2024
 
@@ -42,11 +42,17 @@ rm(list = ls())
 # yr=2021
 # fulltrap_output = "fulltrap21_03.04.24.rds"
 
-#clean 2022 data
-processingdata = "vole_capture_data_03.04.24.csv"
-WRdata= "week_recap_data_03.04.24.csv"
-yr=2022
+# #clean 2022 data
+# processingdata = "vole_capture_data_03.04.24.csv"
+# WRdata= "week_recap_data_03.04.24.csv"
+# yr=2022
 # fulltrap_output = "fulltrap22_03.04.24.rds"
+
+#clean 2023 data
+processingdata = "vole_capture_data_11.11.24.csv"
+WRdata = "week_recap_data_11.11.24.csv"
+yr=2023
+fulltrap_output = "fulltrap23_11.11.24.rds"
 #########################################################
 
 
@@ -99,8 +105,6 @@ yr=2022
            notes = as.character(notes)) %>%
     #filter for just one year
     filter(year==yr) %>%
-    #remove uusi 2022 data
-    filter(site!="uusi") %>% #only relevant for 2022
     #remove any animals without a trap location
     filter(!is.na(trap)) %>%
     #remove any animals without a tag id
@@ -108,6 +112,14 @@ yr=2022
     #remove animals found dead when setting/supplementing
     filter(!session == "0") %>%
     filter(!is.na(session))
+  
+  # ## SPECIFIC FOR 2022 #remove uusi (only trapped in Oct 2022)
+  # voledata <- voledata %>% 
+  #   filter(site!="uusi")
+  
+  ## SPECIFIC FOR 2023 #remove kiirastuli (only trapped in May 2023)
+  voledata <- voledata %>% 
+    filter(site!="kiirastuli")
 
   ################################ create a time column to replace session (for CMRnet) ##################################
   voledata <-
@@ -134,8 +146,7 @@ yr=2022
   ######################################################### END ############################################################
 
   ################################ convert trap number to a grid coordinate ####################################
-  voledata<-
-    voledata %>%
+  voledata <- voledata %>%
     #separate trap ID (letter/number) into column of the letter (x) and number (y)
     separate(trap, into = c("x", "y"), sep = "(?<=[A-Z])(?=[0-9])", remove=FALSE) %>%
     #recode each letter as a number
@@ -162,8 +173,7 @@ yr=2022
     mutate(x = as.numeric(x), y = as.numeric(y))
 
 
-  voledata<-
-    voledata %>%
+  voledata <- voledata %>%
     #adjust the trap number (y) so it corresponds to a grid number
     #if remainder of x/2 is 0 (if x is even), multiply y by 2 - if else multiply by 2 then subtract 1
     mutate(y_new = ifelse((x %% 2) == 0, ((voledata$y)*2), (((voledata$y)*2)-1))) %>%
@@ -226,15 +236,19 @@ yr=2022
            notes = as.character(notes)) %>%
     #filter for desired year
     filter(year==yr) %>%
-    #remove uusi data
-    filter(site!="uusi") %>% #only relevant for 2022
     filter(!is.na(trap)) %>% #remove NA trap
     filter(!is.na(tag)) #remove NA tag
-
+  
+  # ## SPECIFIC FOR 2022 #remove uusi (only trapped in Oct 2022)
+  # wr_data <- wr_data %>% 
+  #   filter(site!="uusi")
+  
+  ## SPECIFIC FOR 2023 #remove kiirastuli (only trapped in May 2023)
+  wr_data <- wr_data %>% 
+    filter(site!="kiirastuli")
 
   ################################ create a time column to replace session (for CMRnet) ##################################
-  wr_data <-
-    wr_data %>%
+  wr_data <- wr_data %>%
     mutate(time = case_when(
       session == "1" ~ "06:00:00",
       session == "2" ~ "18:00:00",
@@ -256,8 +270,7 @@ yr=2022
   ######################################################### END ############################################################
 
   ################################ convert trap number to a grid coordinate ####################################
-  wr_data<-
-    wr_data %>%
+  wr_data <- wr_data %>%
     separate(trap, into = c("x", "y"), sep = "(?<=[A-Z])(?=[0-9])", remove=FALSE) %>%
     #recode each letter as a number
     #this makes a new column with the letter turned into its corresponding number
@@ -283,8 +296,7 @@ yr=2022
     mutate(x = as.numeric(x), y = as.numeric(y))
 
 
-  wr_data<-
-    wr_data %>%
+  wr_data <- wr_data %>%
     #adjust the trap number (y) so it corresponds to a grid number
     #if remainder of x/2 is 0 (if x is even), multiply y by 2 - if else multiply by 2 then subtract 1
     #not sure why, but this code doesn't work if you string it together with the above code... the values for y are all wrong
@@ -318,16 +330,18 @@ yr=2022
   fulltrap$trt <-fct_relevel(fulltrap$trt, c("unfed_control", "unfed_deworm", "fed_control", "fed_deworm"))
 
   #add month column to replace occasion - keep occasion, session since later code might need numbers
-  fulltrap <- fulltrap %>% mutate(month = case_when(occasion == "1" ~ "may",
-                                                    occasion == "2" ~ "june",
-                                                    occasion == "3" ~ "july",
-                                                    occasion == "4" ~ "aug",
-                                                    occasion == "5" ~ "sept",
-                                                    occasion == "6" ~ "oct")) %>%
+  fulltrap <- fulltrap %>% mutate(month = case_when(occasion == "1" | occasion == "13" ~ "may",
+                                                    occasion == "2" | occasion == "14" ~ "june",
+                                                    occasion == "3" | occasion == "15" ~ "july",
+                                                    occasion == "4" | occasion == "16" ~ "aug",
+                                                    occasion == "5" | occasion == "17" ~ "sept",
+                                                    occasion == "6" | occasion == "18" ~ "oct")) %>%
+    #2021 and 2022 have occasions 1-6, occasions are 13-18 in 2023
     mutate(month = factor(month, levels=c("may", "june", "july", "aug", "sept", "oct"))) %>%
     relocate(month, .after=date_time)
 
   #FIRSTCAP column: give a 1 if the capture is the first occurrence of that tag, else 0
+  ## THIS IS ONLY FOR THAT YEAR - corrected in hanta_cleaning when all years are put together
   fulltrap <- fulltrap %>%
     unite(occ.sess, occasion, session, sep = ".", remove = FALSE) %>% #make a new occ.sess column so I can do things in order
     group_by(tag) %>%
@@ -338,16 +352,16 @@ yr=2022
   ################ END FIRSTCAP/NEW ###########################
 
   
-  #create caps_per_life column - number of captures of that individual
+  #create caps_per_year column - number of captures of that individual
   fulltrap <- fulltrap %>%
     group_by(tag) %>%
-    mutate(caps_per_life = length(tag)) %>%
+    mutate(caps_per_year = length(tag)) %>%
     ungroup()
-  #count of number of unique traps per animal in lifetime
+  #count of number of unique traps per animal in year
   fulltrap <- fulltrap %>%
     group_by(tag) %>%
-    mutate(traps_per_life = length(unique(trap))) %>%
-    relocate(traps_per_life, .after=caps_per_life) %>%
+    mutate(traps_per_year = length(unique(trap))) %>%
+    relocate(traps_per_year, .after=caps_per_year) %>%
     ungroup()
   # #create a RECAPPED column (binary - were you recapped or not)
   # fulltrap <- fulltrap %>%
@@ -415,7 +429,9 @@ yr=2022
   # ## FIRST! for data purposes, save fulltrap_ALL_03.04.24.rds to get counts of all captured voles
   #   ## including May captures, captures with sex=NA or repro=NA
   # 
+  # saveRDS(fulltrap, file=here("fulltrap21_ALL_03.04.24.rds"))
   # saveRDS(fulltrap, file=here("fulltrap22_ALL_03.04.24.rds"))
+  # saveRDS(fulltrap, file=here("fulltrap23_ALL_03.04.24.rds"))
   
   
   ##### FOR PUBLICATION: skim down the data file to as little data as necessary for analyses
