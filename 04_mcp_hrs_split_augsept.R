@@ -11,7 +11,7 @@ library(scales) #used for pretty plots in the loop - helps make polygons partly 
 library(Hmisc) #has capitalize() function
 
 
-library(kableExtra)
+# library(kableExtra)
 #these are supposed to allow you to print pngs of Kables but they don't work
 # library(magick)
 # library(webshot)
@@ -21,7 +21,7 @@ library(kableExtra)
 rm(list = ls())
 
 #load the fulltrap dataset (make sure it's the most recent version)
-fulltrap <- readRDS(here("fulltrap21_03.04.24.rds"))
+fulltrap <- readRDS(here("fulltrap21_11.11.24.rds"))
 
 #################################################################################
 ################################  prep code  ####################################
@@ -38,10 +38,7 @@ summer_mcp_trap <- fulltrap %>%
 
 fall_mcp_trap <- fulltrap %>%
   filter(season == "fall") %>% #fall only
-  ##something is wrong and caps_per_life isn't always correct... FIX THIS!!
-  dplyr::select(!c(caps_per_life, traps_per_life)) %>%
-  group_by(tag) %>% mutate(relocs = length(tag)) %>% 
-  filter(relocs >= 5) %>% #filter for at least 5 captures
+  filter(caps_per_year >= 5) %>% #filter for at least 5 captures (these captures EXCLUDING may)
   ungroup()
 
 # #how many residents per season?
