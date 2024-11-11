@@ -18,31 +18,31 @@ rm(list = ls())
 
 ####-------------------------------------------
 
-## LOAD 2021 DATA ##
-
-#network data
-overlap_network_list <- readRDS(here("pct_overlap_list21.rds"))
-
-#fulltrap files, for metadata
-metadata <- readRDS(here("fulltrap21_03.04.24.rds")) %>% ##breeders and nonbreeders are here
-  unite(sb, sex, season_breeder, remove = FALSE)
-
-#MONTHLY centroids = - to align the points in space to monthly centroid location
-#jitter to points to avoid overlapping nodes in network if two voles have centroids at the same location
-centroids <- readRDS(here("monthly_centroids21.rds")) %>%
-  rename(tag = Tag_ID) %>%
-  mutate(jitter_x = jitter(x, 20),
-         jitter_y = jitter(y, 20))
+# ## LOAD 2021 DATA ##
+# 
+# #network data
+# overlap_network_list <- readRDS(here("pct_overlap_list21.rds"))
+# 
+# #fulltrap files, for metadata
+# metadata <- readRDS(here("fulltrap21_11.11.24.rds")) %>% ##breeders and nonbreeders are here
+#   unite(sb, sex, season_breeder, remove = FALSE)
+# 
+# #MONTHLY centroids = - to align the points in space to monthly centroid location
+# #jitter to points to avoid overlapping nodes in network if two voles have centroids at the same location
+# centroids <- readRDS(here("monthly_centroids21.rds")) %>%
+#   rename(tag = Tag_ID) %>%
+#   mutate(jitter_x = jitter(x, 20),
+#          jitter_y = jitter(y, 20))
 
 ############################################
 
-## LOAD 2022 DATA ##
-
+# ## LOAD 2022 DATA ##
+# 
 # #network data
 # overlap_network_list <- readRDS(here("pct_overlap_list22.rds"))
 # 
 # #fulltrap files, for metadata
-# metadata <- readRDS(here("fulltrap22_03.04.24.rds")) %>% ##breeders and nonbreeders are here
+# metadata <- readRDS(here("fulltrap22_11.11.24.rds")) %>% ##breeders and nonbreeders are here
 #   unite(sb, sex, season_breeder, remove = FALSE)
 # 
 # #MONTHLY centroids = - to align the points in space to monthly centroid location
@@ -52,13 +52,33 @@ centroids <- readRDS(here("monthly_centroids21.rds")) %>%
 #   mutate(jitter_x = jitter(x, 20),
 #          jitter_y = jitter(y, 20))
 
+############################################
+
+## LOAD 2023 DATA ##
+
+#network data
+overlap_network_list <- readRDS(here("pct_overlap_list23.rds"))
+
+#fulltrap files, for metadata
+metadata <- readRDS(here("fulltrap23_11.11.24.rds")) %>% ##breeders and nonbreeders are here
+  unite(sb, sex, season_breeder, remove = FALSE)
+
+#MONTHLY centroids = - to align the points in space to monthly centroid location
+#jitter to points to avoid overlapping nodes in network if two voles have centroids at the same location
+centroids <- readRDS(here("monthly_centroids23.rds")) %>%
+  rename(tag = Tag_ID) %>%
+  mutate(jitter_x = jitter(x, 20),
+         jitter_y = jitter(y, 20))
+
+############################################
+
 
 
 
 #######----------------- PLOT SPATIAL OVERLAP NETWORKS --------------------
 
 ## plot 1 network per month (June-October) for each site and combine as a composite figure
-## repeat for all sites (n=12) per year in 2021 and 2022
+## repeat for all sites (n=12) per year in 2021, 2022, and 2023
 
 
 #define colors for each fxnl group
@@ -145,34 +165,34 @@ for(i in 1:length(overlap_network_list)) {
 
 ## combine networks per site, print as .png files
 
-## PRINT 2021 GRAPHS ##
-
-for(i in 1:length(graph_list)){
-
-  #site level (1st level of nested list graph_list)
-  site <- graph_list[[i]]
-
-  #use patchwork package to concatenate ggraph plots
-  patchwork::wrap_plots(site, nrow=1) + plot_annotation(title=paste(names(overlap_network_list)[[i]], "2021")) +
-    plot_layout(guides="collect") & theme(legend.position = "bottom",
-                                          plot.margin=margin(c(0,32.5,0,32.5)),
-                                          legend.box.margin=margin(20,0,0,0))
-
-  #save the composite figure as .png
-  ggsave(filename = paste("pct_overlap_", "fxnlgrp_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
-         plot=last_plot(),
-         width=19, height=4, units="in",
-         dpi=600)
-
-}
-
-### NOTE! The labels for the colors in the legend will be wrong if all four fxnl groups are not represented in the graph
-  ## and there will be multiple legends - only trust legends with all four fxnl groups represented
+# ## PRINT 2021 GRAPHS ##
+# 
+# for(i in 1:length(graph_list)){
+# 
+#   #site level (1st level of nested list graph_list)
+#   site <- graph_list[[i]]
+# 
+#   #use patchwork package to concatenate ggraph plots
+#   patchwork::wrap_plots(site, nrow=1) + plot_annotation(title=paste(names(overlap_network_list)[[i]], "2021")) +
+#     plot_layout(guides="collect") & theme(legend.position = "bottom",
+#                                           plot.margin=margin(c(0,32.5,0,32.5)),
+#                                           legend.box.margin=margin(20,0,0,0))
+# 
+#   #save the composite figure as .png
+#   ggsave(filename = paste("pct_overlap_", "fxnlgrp_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
+#          plot=last_plot(),
+#          width=19, height=4, units="in",
+#          dpi=600)
+# 
+# }
+# 
+# ### NOTE! The labels for the colors in the legend will be wrong if all four fxnl groups are not represented in the graph
+#   ## and there will be multiple legends - only trust legends with all four fxnl groups represented
 
 ######################################
 
-## PRINT 2022 GRAPHS ##
-
+# ## PRINT 2022 GRAPHS ##
+# 
 # for(i in 1:length(graph_list)){
 # 
 #   #site level (1st level of nested list graph_list)
@@ -186,13 +206,39 @@ for(i in 1:length(graph_list)){
 #   #save the composite figure as .png
 #   ggsave(filename = paste("pct_overlap_", "fxnlgrp_", names(overlap_network_list)[[i]], "_2022", ".png", sep = ""),
 #          plot=last_plot(),
-#          width=18, height=5, units="in",
+#          width=19, height=4, units="in",
 #          dpi=600)
 # 
 # }
+# 
+# ### NOTE! The labels for the colors in the legend will be wrong if all four fxnl groups are not represented in the graph
+#   ## and there will be multiple legends - only trust legends with all four fxnl groups represented
+
+
+######################################
+
+## PRINT 2023 GRAPHS ##
+
+for(i in 1:length(graph_list)){
+
+  #site level (1st level of nested list graph_list)
+  site <- graph_list[[i]]
+
+  #use patchwork package to concatenate ggraph plots
+  patchwork::wrap_plots(site, nrow=1) + plot_annotation(title=paste(names(overlap_network_list)[[i]], "2023")) +
+    plot_layout(guides="collect") & theme(legend.position = "bottom",
+                                          plot.margin=margin(c(0,35,0,35)),
+                                          legend.box.margin=margin(20,0,0,0))
+  #save the composite figure as .png
+  ggsave(filename = paste("pct_overlap_", "fxnlgrp_", names(overlap_network_list)[[i]], "_2023", ".png", sep = ""),
+         plot=last_plot(),
+         width=19, height=4, units="in",
+         dpi=600)
+
+}
 
 ### NOTE! The labels for the colors in the legend will be wrong if all four fxnl groups are not represented in the graph
-  ## and there will be multiple legends - only trust legends with all four fxnl groups represented
+## and there will be multiple legends - only trust legends with all four fxnl groups represented
 
 
 ######################################
