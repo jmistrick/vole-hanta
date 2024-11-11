@@ -33,20 +33,20 @@ rm(list = ls())
 
 ########### TO RUN THIS CODE IN THIS FILE ################
 
-#load EITHER the files for the 2021 data or 2022 data and run the entire script
+#load EITHER the files for the 2021, 2022, or 2023 data and run the entire script
 #then clear environment, load the other year data here and rerun the script
 
 # #clean 2021 data
-# processingdata = "vole_capture_data_03.04.24.csv"
-# WRdata= "week_recap_data_03.04.24.csv"
+# processingdata = "vole_capture_data_11.11.24.csv"
+# WRdata= "week_recap_data_11.11.24.csv"
 # yr=2021
-# fulltrap_output = "fulltrap21_03.04.24.rds"
+# fulltrap_output = "fulltrap21_11.11.24.rds"
 
 # #clean 2022 data
-# processingdata = "vole_capture_data_03.04.24.csv"
-# WRdata= "week_recap_data_03.04.24.csv"
+# processingdata = "vole_capture_data_11.11.24.csv"
+# WRdata= "week_recap_data_11.11.24.csv"
 # yr=2022
-# fulltrap_output = "fulltrap22_03.04.24.rds"
+# fulltrap_output = "fulltrap22_11.11.24.rds"
 
 #clean 2023 data
 processingdata = "vole_capture_data_11.11.24.csv"
@@ -63,7 +63,7 @@ fulltrap_output = "fulltrap23_11.11.24.rds"
 
   #load data
   voledata <- read.csv(here(processingdata))
-  #march 03 2024 version - has cleaned/updated PIT tags, vole sexes (for 2021 and 2022 season)
+  #nov 11 2024 version - has cleaned/updated PIT tags, vole sexes (for 2021, 2022, 2023 seasons)
     #cleaning was done on full 2021,2022,2023 capture data by Katy Wearing
 
   #clean names
@@ -114,11 +114,11 @@ fulltrap_output = "fulltrap23_11.11.24.rds"
     filter(!is.na(session))
   
   # ## SPECIFIC FOR 2022 #remove uusi (only trapped in Oct 2022)
-  # voledata <- voledata %>% 
+  # voledata <- voledata %>%
   #   filter(site!="uusi")
   
   ## SPECIFIC FOR 2023 #remove kiirastuli (only trapped in May 2023)
-  voledata <- voledata %>% 
+  voledata <- voledata %>%
     filter(site!="kiirastuli")
 
   ################################ create a time column to replace session (for CMRnet) ##################################
@@ -193,8 +193,8 @@ fulltrap_output = "fulltrap23_11.11.24.rds"
 
   #load the data
   wr_data <- read.csv(here(WRdata))
-  #march 03 2024 version - has cleaned/updated PIT tags, vole sexes (2021 and 2022 season)
-  #cleaning was done on full 2021,2022,2023 capture data
+  #nov 11 2024 version - has cleaned/updated PIT tags, vole sexes (2021, 2022, 2023 seasons)
+  #cleaning was done on full 2021,2022,2023 capture data by Katy Wearing
 
   #several columns (sex, per, nip, preg, test, fate, handler) have "" or "not noted" --> change these to NA
   wr_data$sex[wr_data$sex == "not noted"] <- NA
@@ -240,11 +240,11 @@ fulltrap_output = "fulltrap23_11.11.24.rds"
     filter(!is.na(tag)) #remove NA tag
   
   # ## SPECIFIC FOR 2022 #remove uusi (only trapped in Oct 2022)
-  # wr_data <- wr_data %>% 
+  # wr_data <- wr_data %>%
   #   filter(site!="uusi")
   
   ## SPECIFIC FOR 2023 #remove kiirastuli (only trapped in May 2023)
-  wr_data <- wr_data %>% 
+  wr_data <- wr_data %>%
     filter(site!="kiirastuli")
 
   ################################ create a time column to replace session (for CMRnet) ##################################
@@ -426,12 +426,12 @@ fulltrap_output = "fulltrap23_11.11.24.rds"
 
   ####################################################################################################
 
-  # ## FIRST! for data purposes, save fulltrap_ALL_03.04.24.rds to get counts of all captured voles
-  #   ## including May captures, captures with sex=NA or repro=NA
-  # 
-  # saveRDS(fulltrap, file=here("fulltrap21_ALL_03.04.24.rds"))
-  # saveRDS(fulltrap, file=here("fulltrap22_ALL_03.04.24.rds"))
-  # saveRDS(fulltrap, file=here("fulltrap23_ALL_03.04.24.rds"))
+  ## FIRST! for data purposes, save fulltrap_ALL_11.11.24.rds to get counts of all captured voles
+    ## including May captures, captures with sex=NA or repro=NA
+
+  # saveRDS(fulltrap, file=here("fulltrap21_ALL_11.11.24.rds"))
+  # saveRDS(fulltrap, file=here("fulltrap22_ALL_11.11.24.rds"))
+  saveRDS(fulltrap, file=here("fulltrap23_ALL_11.11.24.rds"))
   
   
   ##### FOR PUBLICATION: skim down the data file to as little data as necessary for analyses
