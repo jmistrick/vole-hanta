@@ -32,15 +32,15 @@ centroids23 <- readRDS(here("monthly_centroids23.rds")) %>% rename(tag = Tag_ID)
 
 #load fulltrap data (trapping metadata for each capture) - pull PIT tag, month, site
 ft21 <- readRDS(here("fulltrap21_11.11.24.rds"))
-trapdata21 <- ft21 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
+trapdata21 <- ft21 %>% dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
   group_by(tag, month) %>% slice(1)
 
 ft22 <- readRDS(here("fulltrap22_11.11.24.rds"))
-trapdata22 <- ft22 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
+trapdata22 <- ft22 %>% dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
   group_by(tag, month) %>% slice(1)
 
 ft23 <- readRDS(here("fulltrap23_11.11.24.rds"))
-trapdata23 <- ft23 %>% select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
+trapdata23 <- ft23 %>% dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
   group_by(tag, month) %>% slice(1)
 
 
@@ -57,7 +57,7 @@ spaceusedata <- rbind(params21, params22, params23) %>%
   mutate(rad_95_m = rad_95_trap*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
   separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
   unite(trt, foodtrt, helmtrt) %>%
-  select(-c(a,b,)) %>%
+  dplyr::select(-c(a,b,)) %>%
   mutate(season = factor(season, levels=c("summer", "fall"))) %>%
   mutate(trt = factor(trt, levels=c("unfed_control", "unfed_deworm",
                                     "fed_control", "fed_deworm")))
