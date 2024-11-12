@@ -125,23 +125,30 @@ dat %>%
 #standard error (std dev of a population)
 SE <- function(x) sd(x)/sqrt(length(x))
 
+#average degree measures (+SE) per year/trt/month of nonverts
 nonvert_means.month <- nonvert %>% 
   group_by(year, trt, month) %>%
   summarise(prev.in = mean(prev_wt.deg.in), se.prev.in = SE(prev_wt.deg.in),
+            prev.bin.in = mean(prev_bin.in.deg), se.prev.bin.in = SE(prev_bin.in.deg),
             prev.M = mean(prev_M.deg), se.prev.M = SE(prev_M.deg),
             prev.b = mean(prev_b.deg), se.prev.b = SE(prev_b.deg),
             prev.mb = mean(prev_mb.deg), se.prev.mb = SE(prev_mb.deg),
             serovert = factor(0, levels=c("0", "1")))
 
+#join nonvert means to serovert (observed) data
+#https://stackoverflow.com/questions/24148423/r-ggplot-with-two-series-points-and-errorbars-with-legends
 plotdata <- serovert %>% select(c(year, trt, month, site, tag, sex, season_breeder, 
-                                  prev_wt.deg.in, prev_M.deg, prev_mb.deg, prev_b.deg, serovert)) %>%
+                                  prev_wt.deg.in, prev_bin.in.deg, prev_M.deg, prev_mb.deg, prev_b.deg, serovert)) %>%
   rename(prev.in = prev_wt.deg.in,
+         prev.bin.in = prev_bin.in.deg,
          prev.M = prev_M.deg,
          prev.b = prev_b.deg,
-         prev.mb = prev_mb.deg) %>%
+         prev.mb = prev_mb.deg) %>% #rename columns for easier plotting
   rbind(nonvert_means.month) 
 
+## visualize ##
 
+#previous weighted in degree
 plotdata %>% ggplot(aes(x=month)) +
   geom_point(aes(y=prev.in, color=serovert, shape=serovert),
              position = position_jitterdodge(0.2, dodge.width = .2)) +
@@ -152,6 +159,18 @@ plotdata %>% ggplot(aes(x=month)) +
   labs(title="Previous Weighted In Degree") +
   facet_grid(year ~ trt)
 
+#previous binary in degree
+plotdata %>% ggplot(aes(x=month)) +
+  geom_point(aes(y=prev.bin.in, color=serovert, shape=serovert),
+             position = position_jitterdodge(0.2, dodge.width = .2)) +
+  geom_errorbar(aes( ymin = (prev.bin.in-se.prev.bin.in), 
+                     ymax = (prev.bin.in + se.prev.bin.in))) +
+  scale_shape_manual(name = "Sero Status", values=c(1,4)) +
+  scale_colour_manual(name = "Sero Status", values=c("black", "red")) +
+  labs(title="Previous Binary In Degree") +
+  facet_grid(year ~ trt)
+
+#previous male degree
 plotdata %>% ggplot(aes(x=month)) +
   geom_point(aes(y=prev.M, color=serovert, shape=serovert),
              position = position_jitterdodge(0.2, dodge.width = .2)) +
@@ -162,6 +181,7 @@ plotdata %>% ggplot(aes(x=month)) +
   labs(title="Previous Male Degree") +
   facet_grid(year ~ trt)
 
+#previous breeder degree
 plotdata %>% ggplot(aes(x=month)) +
   geom_point(aes(y=prev.b, color=serovert, shape=serovert),
              position = position_jitterdodge(0.2, dodge.width = .2)) +
@@ -172,6 +192,7 @@ plotdata %>% ggplot(aes(x=month)) +
   labs(title="Previous Breeder Degree") +
   facet_grid(year ~ trt)
 
+#previous male breeder degree
 plotdata %>% ggplot(aes(x=month)) +
   geom_point(aes(y=prev.mb, color=serovert, shape=serovert),
              position = position_jitterdodge(0.2, dodge.width = .2)) +
