@@ -3,7 +3,6 @@
 #load libraries
 library(here)
 library(tidyverse)
-# library(rgdal)
 library(sp)
 library(sf)
 library(adehabitatHR)
@@ -11,34 +10,43 @@ library(scales) #used for pretty plots in the loop - helps make polygons partly 
 library(Hmisc) #has capitalize() function
 
 
-# library(kableExtra)
-#these are supposed to allow you to print pngs of Kables but they don't work
-# library(magick)
-# library(webshot)
-# webshot::install_phantomjs()
-
 #clear environment
 rm(list = ls())
 
-#load the fulltrap dataset (make sure it's the most recent version)
-fulltrap <- readRDS(here("fulltrap21_11.11.24.rds"))
+# #load the 2021 fulltrap dataset (make sure it's the most recent version)
+# fulltrap <- readRDS(here("fulltrap21_11.11.24.rds"))
+
+
+# #load fulltrap 2022 - and clean some PIT tags so ggplot doesn't get angry
+# #omg, realized just now that plot() thinks these are hex codes for the color of the polygon - LOVE IT
+# fulltrap <- readRDS(here("fulltrap22_11.11.24.rds")) %>%
+#   mutate(tag = str_replace(tag, "227207/219468", "227207"),
+#          tag = str_replace(tag, "227049/219527", "227049"),
+#          tag = str_replace(tag, "226483A", "226483"),
+#          tag = str_replace(tag, "219464/227177", "219464"))
+
+
+#load the 2023 fulltrap dataset (make sure it's the most recent version)
+fulltrap <- readRDS(here("fulltrap23_11.11.24.rds"))  %>%
+  mutate(tag = str_replace(tag, "219464/227177", "219464"))
 
 #################################################################################
 ################################  prep code  ####################################
 #################################################################################
 
-#subset fulltrap into May-Aug & Sept-Oct for use in MCP analysis - only animals captured at least 5 times THAT SEASON
+#subset fulltrap into June-Aug & Sept-Oct for use in MCP analysis - only animals captured at least 5 times THAT SEASON
 summer_mcp_trap <- fulltrap %>%
   filter(season=="summer") %>% #summer only
-  ##something is wrong and caps_per_life isn't always correct... FIX THIS!!
-  dplyr::select(!c(caps_per_life, traps_per_life)) %>%
-  group_by(tag) %>% mutate(relocs = length(tag)) %>% 
+  dplyr::select(!c(caps_per_year, traps_per_year)) %>% #these are per year, we need per season
+  group_by(tag) %>% mutate(relocs = length(tag)) %>%
   filter(relocs >= 5) %>% #filter for at least 5 captures
   ungroup()
 
 fall_mcp_trap <- fulltrap %>%
   filter(season == "fall") %>% #fall only
-  filter(caps_per_year >= 5) %>% #filter for at least 5 captures (these captures EXCLUDING may)
+  dplyr::select(!c(caps_per_year, traps_per_year)) %>% #these are per year, we need per season
+  group_by(tag) %>% mutate(relocs = length(tag)) %>%
+  filter(relocs >= 5) %>% #filter for at least 5 captures
   ungroup()
 
 # #how many residents per season?
@@ -113,6 +121,7 @@ fall_mcp_sex <- fall_mcp_traits %>%
 ######### ATTENTION ATTENTION ATTENTION - the following code will create the CAs and calculate all the metrics
       ### unless you have updated the code, you don't need to run it all and can just skip all this
       ### at the end of this, there is code to pull the rds files for summer_ fall_ and summary dfs
+      ### run on 12 November 2024 - saved output as RDS
 
 
 ################################################################################################################
@@ -131,12 +140,12 @@ summer_sitespdf_list <- list()
 summer_CA_list <- list()
 
 for(i in 1:length(summer_mcp_list)){
-  
+
   GRID <- summer_mcp_list[[i]] #pull that month's data
 
   #Create Spatial Points for all capture locations and assign vole IDs to each location
   #https://stackoverflow.com/questions/32583606/create-spatialpointsdataframe
-  
+
   #SPDF needs 3 things: coordinates, data, and coordinate reference system
   coords <- GRID[ , c("easting", "northing")]
   data <- GRID[ ,c("tag", "sex", "season_breeder", "site", "season")]
@@ -191,9 +200,17 @@ summer_CA_summary <- summer_CA_summary %>%
   left_join(y=summer_mcp_traits, by=c("site", "tag")) %>%
   dplyr::select(year, site, season, trt, tag, sex, season_breeder, area.m) #rearrange and drop area (in hectares)
 
-# SAVE IT
-summer_CA_summary21 <- summer_CA_summary
-saveRDS(summer_CA_summary21, "summer_CA_summary21.rds")
+# # 2021 SAVE IT
+# summer_CA_summary21 <- summer_CA_summary
+# saveRDS(summer_CA_summary21, "summer_CA_summary21.rds")
+
+# # 2022 SAVE IT
+# summer_CA_summary22 <- summer_CA_summary
+# saveRDS(summer_CA_summary22, "summer_CA_summary22.rds")
+
+# 2023 SAVE IT
+summer_CA_summary23 <- summer_CA_summary
+saveRDS(summer_CA_summary23, "summer_CA_summary23.rds")
 
 ##########################################################################################
 ##########################################################################################
@@ -205,40 +222,40 @@ fall_sitespdf_list <- list()
 fall_CA_list <- list()
 
 for(i in 1:length(fall_mcp_list)){
-  
+
   GRID <- fall_mcp_list[[i]] #pull that month's data
-  
+
   #Create Spatial Points for all capture locations and assign vole IDs to each location
   #https://stackoverflow.com/questions/32583606/create-spatialpointsdataframe
-  
+
   #SPDF needs 3 things: coordinates, data, and coordinate reference system
   coords <- GRID[ , c("easting", "northing")]
   data <- GRID[ ,c("tag", "sex", "season_breeder", "site", "season")]
   crs <- CRS("+proj=utm +zone=35 +units=m +no_defs +ellps=GRS80") #might not be necessary since using UTM coordinates
   #combine all three into a spdf
   spdf <- SpatialPointsDataFrame(coords = coords, data = data, proj4string = crs)
-  
+
   #create MCPs for our new dataset "merge" by individual animal ID
   cp <- mcp(spdf[,1], percent=100) #(95% is the default) #column 1 has the vole IDs
   #write cp to the sitespdf_list
   fall_sitespdf_list[[i]] <- cp
-  
+
   ## to get area of the bounding polygon for each MCP (ie 'CA' size)
   #area expressed in hectares if map projection was UTM
   mcpdata <- as.data.frame(cp)
   #write the ID/CA area df to the CAarea_list
   fall_CA_list[[i]] <- mcpdata
-  
+
   # Plot the home ranges and save to a png file in my working directory
   png(paste("FALL_caparea_", names(fall_mcp_list)[i], "_2021", ".png", sep = ""))
-  
+
   plot(cp, col = cp@data$id, pch = 16, main = paste(capitalize(names(fall_mcp_list)[i]), "FALL 21 Capture Areas of Resident Voles", sep = " "))
   plot(cp, col = alpha(1:10, 0.5), add = TRUE)
   #add crosshairs for each recapture location
   plot(spdf, add=TRUE)
-  
+
   dev.off()
-  
+
 }
 
 #name the 12 1st order elements as their sites
@@ -265,35 +282,141 @@ fall_CA_summary <- fall_CA_summary %>%
   left_join(y=fall_mcp_traits, by=c("site", "tag")) %>%
   dplyr::select(year, site, season, trt, tag, sex, season_breeder, area.m) #rearrange and drop area (in hectares)
 
-# SAVE IT
-fall_CA_summary21 <- fall_CA_summary
-saveRDS(fall_CA_summary21, "fall_CA_summary21.rds")
+# # 2021 SAVE IT
+# fall_CA_summary21 <- fall_CA_summary
+# saveRDS(fall_CA_summary21, "fall_CA_summary21.rds")
+
+# # 2022 SAVE IT
+# fall_CA_summary22 <- fall_CA_summary
+# saveRDS(fall_CA_summary22, "fall_CA_summary22.rds")
+
+# 2023 SAVE IT
+fall_CA_summary23 <- fall_CA_summary
+saveRDS(fall_CA_summary23, "fall_CA_summary23.rds")
 
 ###################################### END SPDF & CA polygons ####################################
 
 
-
+#load the 2021 summer and fall CA data
+summer_CA_summary21 <- readRDS(here("summer_CA_summary21.rds"))
+fall_CA_summary21 <- readRDS(here("fall_CA_summary21.rds"))
 #combine summer and fall CA data
 CA_summary21 <- rbind(summer_CA_summary21, fall_CA_summary21)
 
-#table of mean capture area (m^2) per functional group
-CA_summary21 %>% group_by(trt, sex, season_breeder) %>%
-  summarise(avg_CA = mean(area.m),
-            n = length(tag))
 
-library(ggridges)
+#load the 2022 summer and fall CA data
+summer_CA_summary22 <- readRDS(here("summer_CA_summary22.rds"))
+fall_CA_summary22 <- readRDS(here("fall_CA_summary22.rds"))
+#combine summer and fall CA data
+CA_summary22 <- rbind(summer_CA_summary22, fall_CA_summary22)
 
-#plot histogram of capture area for each fxnl group by trt, season
-CA_summary21 %>% 
-  unite("fxnl", sex, season_breeder, sep="_", remove=FALSE) %>%
-  ggplot(aes(x=area.m, y=fxnl, fill=fxnl)) +
-  xlim(-10, 3000) + #removes one male outlier at 6000m^2 for better visualizing
-  geom_density_ridges(stat = "binline", bins = 20, scale = 0.95, draw_baseline = FALSE) +
-  facet_grid(season~trt)
 
+#load the 2023 summer and fall CA data
+summer_CA_summary23 <- readRDS(here("summer_CA_summary23.rds"))
+fall_CA_summary23 <- readRDS(here("fall_CA_summary23.rds"))
+#combine summer and fall CA data
+CA_summary23 <- rbind(summer_CA_summary23, fall_CA_summary23)
 
 
 
+# #table of mean capture area (m^2) per functional group
+# CA_summary21 %>% group_by(season, trt, sex, season_breeder) %>%
+#   summarise(avg_CA = mean(area.m),
+#             n = length(tag))
+
+# library(ggridges)
+# 
+# #plot histogram of capture area for each fxnl group by trt, season
+# CA_summary21 %>% 
+#   unite("fxnl", sex, season_breeder, sep="_", remove=FALSE) %>%
+#   ggplot(aes(x=area.m, y=fxnl, fill=fxnl)) +
+#   xlim(-10, 3000) + #removes one male outlier at 6000m^2 for better visualizing
+#   geom_density_ridges(stat = "binline", bins = 20, scale = 0.95, draw_baseline = FALSE) +
+#   facet_grid(season~trt)
+
+
+# compare MCP HRs to kernel density estimates #
+
+#a and b parameters of negative sigmoidal curve to estimate space use
+#params files generated in file: "02_construct_spatial_overlap_networks.R"
+params21 <- readRDS(here("spaceuse_parameters21.rds")) %>% mutate(year=2021) 
+# %>% select(!c(aSE, bSE)) #remove SE if it was calculated in 02-1_functions_construct_overlap_networks
+params22 <- readRDS(here("spaceuse_parameters22.rds")) %>% mutate(year=2022) 
+# %>% select(!c(aSE, bSE)) #remove SE if it was calculated in 02-1_functions_construct_overlap_networks
+params23 <- readRDS(here("spaceuse_parameters23.rds")) %>% mutate(year=2023) 
+
+### SUMMARIZE mean space use kernel size (50% core and 95% peripheral) by functional group, trt, year ####
+### using the a and b params for each fxnl group and plotting space use size in area (meters^2) ####
+
+#space use data - included both core 50% and periphery 95% HR
+spaceuse_area <- rbind(params21, params22, params23) %>%
+  mutate(rad_95_trap = (log((1/0.05)-1) + a) / (-b)) %>% #calculate the radius ("trap units") where probability of detection is 95%
+  mutate(rad_95_m = rad_95_trap*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
+  mutate(area.m = pi*(rad_95_m^2)) %>% #calculate area of circular kernel
+  separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
+  unite(trt, foodtrt, helmtrt) %>%
+  rename(season_breeder = breeder) %>%
+  dplyr::select(-c(a, b ,rad_95_trap, rad_95_m)) %>%
+  mutate(season = factor(season, levels=c("summer", "fall"))) %>%
+  mutate(trt = factor(trt, levels=c("unfed_control", "unfed_deworm",
+                                    "fed_control", "fed_deworm")))
+##----------------------------------------------------------------------------------------------------
+
+
+mcp21 <- CA_summary21 %>% mutate(method = "mcp") %>%
+  dplyr::select(!c(tag, site))
+
+kernel21 <- spaceuse_area %>% filter(year=="2021") %>%
+  mutate(method = "kernel")
+
+compare21 <- rbind(mcp21, kernel21) %>%
+  unite(sb, sex, season_breeder, remove=TRUE)
+
+#MCP homeranges (observed) vs estimated kernel (Wanelik Farine)
+compare21 %>% ggplot(aes(y=season)) +
+  geom_point(aes(x=area.m, color=factor(sb), shape=factor(method)),
+             position = position_jitterdodge(0.2, dodge.width = .2)) +
+  scale_shape_manual(name = "Method", values=c(16,4)) +
+  labs(title="2021 MCP vs Kernel HomeRanges") +
+  facet_wrap(~trt)
+
+
+
+mcp22 <- CA_summary22 %>% mutate(method = "mcp") %>%
+  dplyr::select(!c(tag, site))
+
+kernel22 <- spaceuse_area %>% filter(year=="2022") %>%
+  mutate(method = "kernel")
+
+compare22 <- rbind(mcp22, kernel22) %>%
+  unite(sb, sex, season_breeder, remove=TRUE)
+
+#MCP homeranges (observed) vs estimated kernel (Wanelik Farine)
+compare22 %>% ggplot(aes(y=season)) +
+  geom_point(aes(x=area.m, color=factor(sb), shape=factor(method)),
+             position = position_jitterdodge(0.2, dodge.width = .2)) +
+  scale_shape_manual(name = "Method", values=c(16,4)) +
+  labs(title="2022 MCP vs Kernel HomeRanges") +
+  facet_wrap(~trt)
+
+
+
+mcp23 <- CA_summary23 %>% mutate(method = "mcp") %>%
+  dplyr::select(!c(tag, site))
+
+kernel23 <- spaceuse_area %>% filter(year=="2023") %>%
+  mutate(method = "kernel")
+
+compare23 <- rbind(mcp23, kernel23) %>%
+  unite(sb, sex, season_breeder, remove=TRUE)
+
+#MCP homeranges (observed) vs estimated kernel (Wanelik Farine)
+compare23 %>% ggplot(aes(y=season)) +
+  geom_point(aes(x=area.m, color=factor(sb), shape=factor(method)),
+             position = position_jitterdodge(0.2, dodge.width = .2)) +
+  scale_shape_manual(name = "Method", values=c(16,4)) +
+  labs(title="2023 MCP vs Kernel HomeRanges") +
+  facet_wrap(~trt)
 
 
 
