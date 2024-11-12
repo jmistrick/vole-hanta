@@ -18,7 +18,7 @@ fulltrap <- readRDS(here("fulltrap21_11.11.24.rds"))
 
 # #load fulltrap 2022 - and clean some PIT tags so ggplot doesn't get angry
 # #omg, realized just now that plot() thinks these are hex codes for the color of the polygon - LOVE IT
-# fulltrap <- readRDS(here("fulltrap22_03.04.24.rds")) %>%
+# fulltrap <- readRDS(here("fulltrap22_11.11.24.rds")) %>%
 #   mutate(tag = str_replace(tag, "227207/219468", "227207"),
 #          tag = str_replace(tag, "227049/219527", "227049"),
 #          tag = str_replace(tag, "226483A", "226483"),
