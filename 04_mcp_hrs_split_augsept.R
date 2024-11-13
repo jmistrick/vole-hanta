@@ -2,10 +2,10 @@
 
 #load libraries
 library(here)
+library(adehabitatHR) #masks dplyr::select, load it first
 library(tidyverse)
 library(sp)
 library(sf)
-library(adehabitatHR)
 library(scales) #used for pretty plots in the loop - helps make polygons partly transparent using the alpha argument
 library(Hmisc) #has capitalize() function
 
@@ -13,8 +13,8 @@ library(Hmisc) #has capitalize() function
 #clear environment
 rm(list = ls())
 
-# #load the 2021 fulltrap dataset (make sure it's the most recent version)
-# fulltrap <- readRDS(here("fulltrap21_11.11.24.rds"))
+#load the 2021 fulltrap dataset (make sure it's the most recent version)
+fulltrap <- readRDS(here("fulltrap21_11.11.24.rds"))
 
 
 # #load fulltrap 2022 - and clean some PIT tags so ggplot doesn't get angry
@@ -26,9 +26,9 @@ rm(list = ls())
 #          tag = str_replace(tag, "219464/227177", "219464"))
 
 
-#load the 2023 fulltrap dataset (make sure it's the most recent version)
-fulltrap <- readRDS(here("fulltrap23_11.11.24.rds"))  %>%
-  mutate(tag = str_replace(tag, "219464/227177", "219464"))
+# #load the 2023 fulltrap dataset (make sure it's the most recent version)
+# fulltrap <- readRDS(here("fulltrap23_11.11.24.rds"))  %>%
+#   mutate(tag = str_replace(tag, "219464/227177", "219464"))
 
 #################################################################################
 ################################  prep code  ####################################
@@ -37,17 +37,29 @@ fulltrap <- readRDS(here("fulltrap23_11.11.24.rds"))  %>%
 #subset fulltrap into June-Aug & Sept-Oct for use in MCP analysis - only animals captured at least 5 times THAT SEASON
 summer_mcp_trap <- fulltrap %>%
   filter(season=="summer") %>% #summer only
-  dplyr::select(!c(caps_per_year, traps_per_year)) %>% #these are per year, we need per season
+  select(!c(caps_per_year, traps_per_year)) %>% #these are per year, we need per season
   group_by(tag) %>% mutate(relocs = length(tag)) %>%
-  filter(relocs >= 5) %>% #filter for at least 5 captures
+  filter(relocs >= 3) %>% #filter for at least 3 captures per season
   ungroup()
+
+#pull animals seen only 3-4 times, want to keep them in for MCP, but adehabitatHR needs 5 relocs
+summer_sub5 <- summer_mcp_trap %>% filter(relocs<5) 
+#effectively doubled the number of observations for animals seen 3 or 4 times, giving them 6-8 relocs
+summer_mcp_trap.rep <- rbind(summer_mcp_trap, summer_sub5)
+
+
 
 fall_mcp_trap <- fulltrap %>%
   filter(season == "fall") %>% #fall only
-  dplyr::select(!c(caps_per_year, traps_per_year)) %>% #these are per year, we need per season
+  select(!c(caps_per_year, traps_per_year)) %>% #these are per year, we need per season
   group_by(tag) %>% mutate(relocs = length(tag)) %>%
-  filter(relocs >= 5) %>% #filter for at least 5 captures
+  filter(relocs >= 3) %>% #filter for at least 3 captures per season
   ungroup()
+
+#pull animals seen only 3-4 times, want to keep them in for MCP, but adehabitatHR needs 5 relocs
+fall_sub5 <- fall_mcp_trap %>% filter(relocs<5) 
+#effectively doubled the number of observations for animals seen 3 or 4 times, giving them 6-8 relocs
+fall_mcp_trap.rep <- rbind(fall_mcp_trap, fall_sub5)
 
 # #how many residents per season?
 # n_distinct(summer_mcp_trap$tag) #45
@@ -62,7 +74,7 @@ fall_mcp_trap <- fulltrap %>%
 
 #change the x,y coordinates of the trap to easting, northing (required for MCP)
 #use A1 at Puro because TREEBRIDGE! is the best - easting: 398049	northing: 6791091
-summer_mcp_trap <- summer_mcp_trap %>%
+summer_mcp_trap.rep <- summer_mcp_trap.rep %>%
   mutate(x.jitter = jitter(x),
          y.jitter = jitter(y)) %>% #jitter points to keep trap-happy voles
   #easting (x coordinate) should be A1.easting - [(trap.letter.as.number-1)*10] 
@@ -76,7 +88,7 @@ summer_mcp_trap <- summer_mcp_trap %>%
   dplyr::select(-c(x, y, x.jitter, y.jitter)) #remove dummy trap coordinates
 
 
-fall_mcp_trap <- fall_mcp_trap %>%
+fall_mcp_trap.rep <- fall_mcp_trap.rep %>%
   mutate(x.jitter = jitter(x),
          y.jitter = jitter(y)) %>% #jitter points to keep trap-happy voles
   #easting (x coordinate) should be A1.easting - [(trap.letter.as.number-1)*10] 
@@ -130,8 +142,8 @@ fall_mcp_sex <- fall_mcp_traits %>%
 ################################################################################################################
 
 #split() mcp_trap into ... A LIST! by site
-summer_mcp_list <- split(summer_mcp_trap, f = summer_mcp_trap$site)
-fall_mcp_list <- split(fall_mcp_trap, f = fall_mcp_trap$site)
+summer_mcp_list <- split(summer_mcp_trap.rep, f = summer_mcp_trap.rep$site)
+fall_mcp_list <- split(fall_mcp_trap.rep, f = fall_mcp_trap.rep$site)
 
 ####### SUMMER #########
 
