@@ -97,7 +97,7 @@ homerange23 <- trapdata23 %>% rename(breeder = season_breeder) %>%
 # 
 # #subset data for just one site/month (to get code running, will eventually need to get this all into ONE GIANT LOOP)
 # #just pull the vole ID, radius, and x-y coordinates of monthly centroid for now
-# data <- homerange22 %>% filter(month=="june", site=="vaarinkorpi") %>% ungroup() %>%
+# data <- homerange21 %>% filter(month=="july", site=="hevonen") %>% ungroup() %>%
 #   select(x, y, rad_95_trap, tag, sex, breeder)
 # 
 # ### these steps will make an sf object for a site/month and plot it
@@ -262,27 +262,69 @@ for(i in 1:length(pct_overlap_list)){
 
 saveRDS(pct_overlap_list, "pct_overlap_list21.rds")
 
-# #collate MONTHLY pct_overlap results
-# #make a list to store things
-# pct_overlap_summary <- list()
-# 
-# #loop across all sites and collapse the dfs per month into one df for the site
-# for(i in 1:length(pct_overlap_list)){
-#   
-#   #for all 12 sites
-#   summary <- do.call("rbind", pct_overlap_list[[i]])
-#   pct_overlap_summary[[i]] <- summary
-# }
-# 
-# #name the 12 1st order elements as their sites
-# names(pct_overlap_summary) <- names(site_month_list)
-# 
-# ## make pct_overlap_summary into freiggein huge df
-# pct_overlap_summary21 <- do.call(rbind.data.frame, pct_overlap_summary)
-# pct_overlap_summary21$year <- 2021
-# row.names(pct_overlap_summary21) <- NULL
-# 
-# saveRDS(pct_overlap_summary21, "pct_overlap_summary21.rds")
+# #load it
+# pct_overlap_list21 <- readRDS(here("pct_overlap_list21.rds"))
+
+
+
+
+
+
+
+###-------------- something to find overlap with infecteds -----------------------
+
+#turn all the adjacency matrices in pct_overlap_list into edge lists (so we can rbind next)
+edgelist_list <- list()
+
+for(i in 1:length(pct_overlap_list)){
+  
+  edgelist_list[[i]] <- list()
+  
+  for(j in 1:length(pct_overlap_list[[i]])){
+    
+    adjmat <- as.data.frame(pct_overlap_list[[i]][[j]])
+    adjmat <- rownames_to_column(adjmat, var="neighbor")
+    edges <- pivot_longer(adjmat, -neighbor, names_to="focal", values_to="weight")
+    edges$month <- names(pct_overlap_list[[i]][j])
+    edges$site <- names(pct_overlap_list[i])
+    
+    edgelist_list[[i]][[j]] <- edges
+  }
+}
+
+
+#collate MONTHLY edgelist_list results
+#make a list to store things
+edges_summary <- list()
+
+#loop across all sites and collapse the dfs per month into one df for the site
+for(i in 1:length(edgelist_list)){
+
+  #for all 12 sites
+  summary <- do.call("rbind", edgelist_list[[i]])
+  edges_summary[[i]] <- summary
+}
+
+#name the 12 1st order elements as their sites
+names(edges_summary) <- names(site_month_list)
+
+## make edges_summary into freiggein huge df
+edges_summary21 <- do.call(rbind.data.frame, edges_summary)
+edges_summary21$year <- 2021
+
+edges_summary21 <- edges_summary21 %>% drop_na(weight) %>% filter(weight>0) %>%
+  select(year, site, month, focal, neighbor, weight)
+
+saveRDS(edges_summary21, "edges_summary21.rds")
+
+####---------- end ---------------------------------------
+
+
+
+
+
+
+
 
 
 ###################################################################
