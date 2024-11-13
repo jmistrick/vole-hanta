@@ -27,11 +27,17 @@ nonvert <- netmets_puuv %>% filter(serovert==0) %>%
 #655 observations 
 n_distinct(nonvert$tag) #490 individuals
 
+nonvert %>% group_by(caps_per_year) %>%
+  summarise(n=length(tag))
+
 
 #subset to only voles that seroconvert
 serovert <- netmets_puuv %>% filter(serovert==1) %>%
   select(!c(wt.deg.in, bin.in.deg, F.deg, M.deg, b.deg, nb.deg, mnb.deg, fnb.deg, mb.deg, fb.deg))
 #82 observations (individuals)
+
+serovert %>% group_by(caps_per_year) %>%
+  summarise(n = length(tag))
 
 
 ###----------------- Visualize some stuff ------------------
@@ -49,56 +55,62 @@ dat <- netmets_puuv %>% drop_na(serovert)
 #previous weighted in-degree
 dat %>% 
   filter(prev_wt.deg.in>0) %>% #remove voles with 0 overlaps in previous month
-  ggplot(aes(x=trt, y=prev_wt.deg.in, color=serovert)) +
+  ggplot(aes(x=prev_month, y=prev_wt.deg.in, color=serovert)) +
   scale_color_manual(values=c("black", "red")) +
   geom_beeswarm() +
   stat_summary(aes(group = serovert, color=serovert), fun = mean, fun.min = mean, fun.max = mean,
-    geom = "crossbar", width = 0.5, lwd = 0.4)
+    geom = "crossbar", width = 0.5, lwd = 0.4) +
+  facet_grid(year~trt)
 
-#previous weighted breeder-degree
+#previous (wt) breeder-degree
 dat %>% 
   filter(prev_b.deg>0) %>% #remove voles with 0 overlaps in previous month
-  ggplot(aes(x=trt, y=prev_b.deg, color=serovert)) +
+  ggplot(aes(x=prev_month, y=prev_b.deg, color=serovert)) +
   scale_color_manual(values=c("black", "red")) +
   geom_beeswarm() +
   stat_summary(aes(group = serovert, color=serovert), fun = mean, fun.min = mean, fun.max = mean,
-               geom = "crossbar", width = 0.5, lwd = 0.4)
+               geom = "crossbar", width = 0.5, lwd = 0.4) +
+  facet_grid(year~trt)
 
-#previous weighted breeder-degree
+#previous (wt) male-degree
 dat %>% 
   filter(prev_M.deg>0) %>% #remove voles with 0 overlaps in previous month
-  ggplot(aes(x=trt, y=prev_M.deg, color=serovert)) +
+  ggplot(aes(x=prev_month, y=prev_M.deg, color=serovert)) +
   scale_color_manual(values=c("black", "red")) +
   geom_beeswarm() +
   stat_summary(aes(group = serovert, color=serovert), fun = mean, fun.min = mean, fun.max = mean,
-               geom = "crossbar", width = 0.5, lwd = 0.4)
+               geom = "crossbar", width = 0.5, lwd = 0.4) +
+  facet_grid(year~trt)
 
-#previous weighted breeder-degree
+#previous (wt) male breeder-degree
 dat %>% 
   filter(prev_mb.deg>0) %>% #remove voles with 0 overlaps in previous month
-  ggplot(aes(x=trt, y=prev_mb.deg, color=serovert)) +
+  ggplot(aes(x=prev_month, y=prev_mb.deg, color=serovert)) +
   scale_color_manual(values=c("black", "red")) +
   geom_beeswarm() +
   stat_summary(aes(group = serovert, color=serovert), fun = mean, fun.min = mean, fun.max = mean,
-               geom = "crossbar", width = 0.5, lwd = 0.4)
+               geom = "crossbar", width = 0.5, lwd = 0.4) +
+  facet_grid(year~trt)
 
-#previous weighted breeder-degree
+#previous (wt) female-degree
 dat %>% 
   filter(prev_F.deg>0) %>% #remove voles with 0 overlaps in previous month
-  ggplot(aes(x=trt, y=prev_F.deg, color=serovert)) +
+  ggplot(aes(x=prev_month, y=prev_F.deg, color=serovert)) +
   scale_color_manual(values=c("black", "red")) +
   geom_beeswarm() +
   stat_summary(aes(group = serovert, color=serovert), fun = mean, fun.min = mean, fun.max = mean,
-               geom = "crossbar", width = 0.5, lwd = 0.4)
+               geom = "crossbar", width = 0.5, lwd = 0.4) +
+  facet_grid(year~trt)
 
-#previous weighted breeder-degree
+#previous (wt) female breeder-degree
 dat %>% 
   filter(prev_fb.deg>0) %>% #remove voles with 0 overlaps in previous month
-  ggplot(aes(x=trt, y=prev_fb.deg, color=serovert)) +
+  ggplot(aes(x=prev_month, y=prev_fb.deg, color=serovert)) +
   scale_color_manual(values=c("black", "red")) +
   geom_beeswarm() +
   stat_summary(aes(group = serovert, color=serovert), fun = mean, fun.min = mean, fun.max = mean,
-               geom = "crossbar", width = 0.5, lwd = 0.4)
+               geom = "crossbar", width = 0.5, lwd = 0.4) +
+  facet_grid(year~trt)
 
 
 # #for wanelik/farine overlaps
@@ -113,11 +125,12 @@ dat %>%
 #previous binary degree (number of overlaps)
 dat %>% 
   filter(prev_bin.in.deg>0) %>% #remove voles with 0 overlaps in previous month
-  ggplot(aes(x=trt, y=prev_bin.in.deg, color=serovert)) +
+  ggplot(aes(x=prev_month, y=prev_bin.in.deg, color=serovert)) +
   scale_color_manual(values=c("black", "red")) +
   geom_beeswarm() +
   stat_summary(aes(group = serovert, color=serovert), fun = mean, fun.min = mean, fun.max = mean,
-               geom = "crossbar", width = 0.5, lwd = 0.4)
+               geom = "crossbar", width = 0.5, lwd = 0.4) +
+  facet_grid(year~trt)
 
 
 ######--------------------------------------------------------------
@@ -205,3 +218,19 @@ plotdata %>% ggplot(aes(x=month)) +
 
 
 
+
+#####---------- using GIANT edge list to determine who overlapped with infected --------
+
+#load the GIANT edgelist (from 07_percent_overlap.R)
+edges_summary21 <- readRDS("edges_summary21.rds") 
+
+#trim down netmets_puuv to useful stuff only
+puuvstatus <- netmets_puuv %>% select(year, site, month, tag, puuv_ifa) %>%
+  rename(neighbor = tag) %>% rename(neighbor_puuv = puuv_ifa) %>%
+  mutate(year = as.numeric(as.character(year)),
+         site = as.character(site),
+         month = as.character(month)) 
+
+whodunnit <- edges_summary21 %>% left_join(puuvstatus, by=c("year", "site", "month", "neighbor"))
+
+whodunnit %>% drop_na(neighbor_puuv)
