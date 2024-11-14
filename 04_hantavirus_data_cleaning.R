@@ -106,7 +106,7 @@ puuv_data <- readRDS(file = "hantadata_11.11.24.rds")
 
 ##################################  COMBINE NETMETS data with PUUV data ######################################
 
-#join puuv_data to netmets_full (BOTH YEARS!)
+#join puuv_data to netmets_full (ALL YEARS!)
 netmets_puuv <- left_join(netmets_full, puuv_data, by="samp_id") %>%
   #left join on netmets_full because I need to have network data
   relocate(puuv_ifa, .after="samp_id") %>%
@@ -293,6 +293,47 @@ netmets_puuv <- netmets_puuv %>%
 
 
 
+
+
+
+
+#####---- Nov 13 2024 --- using GIANT edge lists to determine (wt) infected in degree --------
+
+#load the GIANT edgelists (1 per year) (from 07_percent_overlap.R)
+edges_summary21 <- readRDS("edges_summary21.rds") 
+edges_summary22 <- readRDS("edges_summary22.rds")
+edges_summary23 <- readRDS("edges_summary23.rds")
+
+edges_summaryALL <- rbind(edges_summary21, edges_summary22, edges_summary23) %>%
+  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% 
+  mutate(site = as.factor(site),
+         year = as.factor(year))
+
+#trim down netmets_puuv to tag and their puuv stats each month
+neighbor_puuv <- netmets_puuv %>% select(year, site, month, tag, puuv_ifa) %>%
+  rename(neighbor_puuv_ifa = puuv_ifa)
+
+#calculate weighted in degree FROM infected voles
+whodunnit <- edges_summaryALL %>% 
+  left_join(neighbor_puuv, by=c("year", "site", "month", "neighbor"="tag")) %>%
+  #keep only entries for voles that overlapped with infected animals
+  drop_na(neighbor_puuv_ifa) %>% filter(neighbor_puuv_ifa == "1") %>% 
+  arrange(year, site, month, focal) %>%
+  group_by(year, site, month, focal) %>%
+  mutate(wt.infected = sum(weight)) %>% slice(1) %>% #keep only 1 entry per focal/month
+  select(year, site, month, focal, wt.infected)
+
+#join this column back to netmets_puuv
+netmets_puuv <- netmets_puuv %>% left_join(whodunnit, by=c("year", "month", "site", "tag"="focal")) %>%
+  mutate(wt.infected = ifelse(is.na(wt.infected), 0, wt.infected)) %>%
+  relocate(wt.infected, .after=wt.deg.in)
+ 
+###------------------------------ end infected in degree ----------------------------------
+
+
+
+
+
 ######### lagged degree and seroconvert status ###############
 # add previous (lagged) degree (degree from previous month influences current PUUV status)
 # add 0,1 for serovert - animals that go 0-0 or 0-1
@@ -300,6 +341,7 @@ netmets_puuv <- netmets_puuv %>%
 netmets_puuv <- netmets_puuv %>% group_by(year, tag) %>%
   arrange(month, .by_group = TRUE) %>%
   mutate(prev_wt.deg.in = lag(wt.deg.in, n=1),
+         prev_wr.infected = lag(wt.infected, n=1),
          prev_bin.in.deg = lag(bin.in.deg, n=1),
          prev_F.deg = lag(F.deg, n=1),
          prev_M.deg = lag(M.deg, n=1),
