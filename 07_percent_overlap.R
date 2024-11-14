@@ -3,6 +3,11 @@
   #to create networks of percent HR overlap between voles - essentially replacing the networks based on...
   #overlap of HR distributions with something more concrete
 
+#14 Nov 2024
+#this code now calculates % overlap (directed) between all voles, each month in all three years
+  #output: "pct_overlap_list2#" which is a nested list of adj matrices per month/site
+  #output: "edges_summary2#" a long-ass df (edge list) of pct overlap between all voles in a year
+
 
 # load packages
 library(here) #v 1.0.0
@@ -267,11 +272,7 @@ saveRDS(pct_overlap_list, "pct_overlap_list21.rds")
 
 
 
-
-
-
-
-###-------------- something to find overlap with infecteds -----------------------
+###---------- 2021 edge list of pct overlap -----------------
 
 #turn all the adjacency matrices in pct_overlap_list into edge lists (so we can rbind next)
 edgelist_list <- list()
@@ -421,7 +422,7 @@ pct_overlap_list22 <- readRDS(here("pct_overlap_list22.rds"))
 
 
 
-###-------------- something to find overlap with infecteds -----------------------
+###---------- 2022 edge list of pct overlap -----------------
 
 #turn all the adjacency matrices in pct_overlap_list into edge lists (so we can rbind next)
 edgelist_list <- list()
@@ -566,7 +567,8 @@ saveRDS(pct_overlap_list, "pct_overlap_list23.rds")
 pct_overlap_list23 <- readRDS(here("pct_overlap_list23.rds"))
 
 
-###-------------- something to find overlap with infecteds -----------------------
+
+###---------- 2023 edge list of pct overlap -----------------
 
 #turn all the adjacency matrices in pct_overlap_list into edge lists (so we can rbind next)
 edgelist_list <- list()
@@ -587,8 +589,6 @@ for(i in 1:length(pct_overlap_list23)){
   }
 }
 
-
-###---------- calculate overlap with infecteds -----------------
 
 #collate MONTHLY edgelist_list results
 #make a list to store things
