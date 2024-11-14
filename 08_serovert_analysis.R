@@ -23,7 +23,8 @@ netmets_puuv <- readRDS(here("netmets_puuv_11.11.24.rds"))
 
 #subset for voles that don't serovert (but do have previous capture)
 nonvert <- netmets_puuv %>% filter(serovert==0) %>%
-  select(!c(wt.deg.in, bin.in.deg, F.deg, M.deg, b.deg, nb.deg, mnb.deg, fnb.deg, mb.deg, fb.deg))
+  select(!c(wt.deg.in, wt.infected, bin.in.deg, F.deg, M.deg, b.deg, 
+            nb.deg, mnb.deg, fnb.deg, mb.deg, fb.deg))
 #655 observations 
 n_distinct(nonvert$tag) #490 individuals
 
@@ -33,7 +34,8 @@ nonvert %>% group_by(caps_per_year) %>%
 
 #subset to only voles that seroconvert
 serovert <- netmets_puuv %>% filter(serovert==1) %>%
-  select(!c(wt.deg.in, bin.in.deg, F.deg, M.deg, b.deg, nb.deg, mnb.deg, fnb.deg, mb.deg, fb.deg))
+  select(!c(wt.deg.in, wt.infected, bin.in.deg, F.deg, M.deg, b.deg, 
+            nb.deg, mnb.deg, fnb.deg, mb.deg, fb.deg))
 #82 observations (individuals)
 
 serovert %>% group_by(caps_per_year) %>%
@@ -60,6 +62,16 @@ dat %>%
   geom_beeswarm() +
   stat_summary(aes(group = serovert, color=serovert), fun = mean, fun.min = mean, fun.max = mean,
     geom = "crossbar", width = 0.5, lwd = 0.4) +
+  facet_grid(year~trt)
+
+#previous wt infected in degree
+dat %>% 
+  filter(prev_wt.infected>0) %>% #remove voles with 0 overlaps in previous month
+  ggplot(aes(x=prev_month, y=prev_wt.infected, color=serovert)) +
+  scale_color_manual(values=c("black", "red")) +
+  geom_beeswarm() +
+  stat_summary(aes(group = serovert, color=serovert), fun = mean, fun.min = mean, fun.max = mean,
+               geom = "crossbar", width = 0.5, lwd = 0.4) +
   facet_grid(year~trt)
 
 #previous (wt) breeder-degree
