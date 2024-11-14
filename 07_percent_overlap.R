@@ -276,17 +276,17 @@ saveRDS(pct_overlap_list, "pct_overlap_list21.rds")
 #turn all the adjacency matrices in pct_overlap_list into edge lists (so we can rbind next)
 edgelist_list <- list()
 
-for(i in 1:length(pct_overlap_list)){
+for(i in 1:length(pct_overlap_list21)){
   
   edgelist_list[[i]] <- list()
   
-  for(j in 1:length(pct_overlap_list[[i]])){
+  for(j in 1:length(pct_overlap_list21[[i]])){
     
-    adjmat <- as.data.frame(pct_overlap_list[[i]][[j]])
+    adjmat <- as.data.frame(pct_overlap_list21[[i]][[j]])
     adjmat <- rownames_to_column(adjmat, var="neighbor")
     edges <- pivot_longer(adjmat, -neighbor, names_to="focal", values_to="weight")
-    edges$month <- names(pct_overlap_list[[i]][j])
-    edges$site <- names(pct_overlap_list[i])
+    edges$month <- names(pct_overlap_list21[[i]][j])
+    edges$site <- names(pct_overlap_list21[i])
     
     edgelist_list[[i]][[j]] <- edges
   }
@@ -416,29 +416,61 @@ for(i in 1:length(pct_overlap_list)){
 
 saveRDS(pct_overlap_list, "pct_overlap_list22.rds")
 
+#load it
+pct_overlap_list22 <- readRDS(here("pct_overlap_list22.rds"))
 
 
-# #collate MONTHLY pct_overlap results
-# #make a list to store things
-# pct_overlap_summary <- list()
-# 
-# #loop across all sites and collapse the dfs per month into one df for the site
-# for(i in 1:length(pct_overlap_list)){
-#   
-#   #for all 12 sites
-#   summary <- do.call("rbind", pct_overlap_list[[i]])
-#   pct_overlap_summary[[i]] <- summary
-# }
-# 
-# #name the 12 1st order elements as their sites
-# names(pct_overlap_summary) <- names(site_month_list)
-# 
-# ## make pct_overlap_summary into freiggein huge df
-# pct_overlap_summary22 <- do.call(rbind.data.frame, pct_overlap_summary)
-# pct_overlap_summary22$year <- 2022
-# row.names(pct_overlap_summary22) <- NULL
-# 
-# saveRDS(pct_overlap_summary22, "pct_overlap_summary22.rds")
+
+###-------------- something to find overlap with infecteds -----------------------
+
+#turn all the adjacency matrices in pct_overlap_list into edge lists (so we can rbind next)
+edgelist_list <- list()
+
+for(i in 1:length(pct_overlap_list22)){
+  
+  edgelist_list[[i]] <- list()
+  
+  for(j in 1:length(pct_overlap_list22[[i]])){
+    
+    adjmat <- as.data.frame(pct_overlap_list22[[i]][[j]])
+    adjmat <- rownames_to_column(adjmat, var="neighbor")
+    edges <- pivot_longer(adjmat, -neighbor, names_to="focal", values_to="weight")
+    edges$month <- names(pct_overlap_list22[[i]][j])
+    edges$site <- names(pct_overlap_list22[i])
+    
+    edgelist_list[[i]][[j]] <- edges
+  }
+}
+
+
+#collate MONTHLY edgelist_list results
+#make a list to store things
+edges_summary <- list()
+
+#loop across all sites and collapse the dfs per month into one df for the site
+for(i in 1:length(edgelist_list)){
+  
+  #for all 12 sites
+  summary <- do.call("rbind", edgelist_list[[i]])
+  edges_summary[[i]] <- summary
+}
+
+#name the 12 1st order elements as their sites
+names(edges_summary) <- names(site_month_list)
+
+## make edges_summary into freiggein huge df
+edges_summary22 <- do.call(rbind.data.frame, edges_summary)
+edges_summary22$year <- 2022
+
+edges_summary22 <- edges_summary22 %>% drop_na(weight) %>% filter(weight>0) %>%
+  select(year, site, month, focal, neighbor, weight)
+
+saveRDS(edges_summary22, "edges_summary22.rds")
+
+####---------- end ---------------------------------------
+
+
+
 
 
 ###################################################################
@@ -530,26 +562,56 @@ for(i in 1:length(pct_overlap_list)){
 
 saveRDS(pct_overlap_list, "pct_overlap_list23.rds")
 
+#load it
+pct_overlap_list23 <- readRDS(here("pct_overlap_list23.rds"))
 
 
-# #collate MONTHLY pct_overlap results
-# #make a list to store things
-# pct_overlap_summary <- list()
-# 
-# #loop across all sites and collapse the dfs per month into one df for the site
-# for(i in 1:length(pct_overlap_list)){
-#   
-#   #for all 12 sites
-#   summary <- do.call("rbind", pct_overlap_list[[i]])
-#   pct_overlap_summary[[i]] <- summary
-# }
-# 
-# #name the 12 1st order elements as their sites
-# names(pct_overlap_summary) <- names(site_month_list)
-# 
-# ## make pct_overlap_summary into freiggein huge df
-# pct_overlap_summary23 <- do.call(rbind.data.frame, pct_overlap_summary)
-# pct_overlap_summary23$year <- 2023
-# row.names(pct_overlap_summary23) <- NULL
-# 
-# saveRDS(pct_overlap_summary23, "pct_overlap_summary23.rds")
+###-------------- something to find overlap with infecteds -----------------------
+
+#turn all the adjacency matrices in pct_overlap_list into edge lists (so we can rbind next)
+edgelist_list <- list()
+
+for(i in 1:length(pct_overlap_list23)){
+  
+  edgelist_list[[i]] <- list()
+  
+  for(j in 1:length(pct_overlap_list23[[i]])){
+    
+    adjmat <- as.data.frame(pct_overlap_list23[[i]][[j]])
+    adjmat <- rownames_to_column(adjmat, var="neighbor")
+    edges <- pivot_longer(adjmat, -neighbor, names_to="focal", values_to="weight")
+    edges$month <- names(pct_overlap_list23[[i]][j])
+    edges$site <- names(pct_overlap_list23[i])
+    
+    edgelist_list[[i]][[j]] <- edges
+  }
+}
+
+
+###---------- calculate overlap with infecteds -----------------
+
+#collate MONTHLY edgelist_list results
+#make a list to store things
+edges_summary <- list()
+
+#loop across all sites and collapse the dfs per month into one df for the site
+for(i in 1:length(edgelist_list)){
+  
+  #for all 12 sites
+  summary <- do.call("rbind", edgelist_list[[i]])
+  edges_summary[[i]] <- summary
+}
+
+#name the 12 1st order elements as their sites
+names(edges_summary) <- names(site_month_list)
+
+## make edges_summary into freiggein huge df
+edges_summary23 <- do.call(rbind.data.frame, edges_summary)
+edges_summary23$year <- 2023
+
+edges_summary23 <- edges_summary23 %>% drop_na(weight) %>% filter(weight>0) %>%
+  select(year, site, month, focal, neighbor, weight)
+
+saveRDS(edges_summary23, "edges_summary23.rds")
+
+####---------- end ---------------------------------------
