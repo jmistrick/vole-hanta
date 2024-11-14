@@ -215,22 +215,3 @@ plotdata %>% ggplot(aes(x=month)) +
   scale_colour_manual(name = "Sero Status", values=c("black", "red")) +
   labs(title="Previous Male Breeder Degree") +
   facet_grid(year ~ trt)
-
-
-
-
-#####---------- using GIANT edge list to determine who overlapped with infected --------
-
-#load the GIANT edgelist (from 07_percent_overlap.R)
-edges_summary21 <- readRDS("edges_summary21.rds") 
-
-#trim down netmets_puuv to useful stuff only
-puuvstatus <- netmets_puuv %>% select(year, site, month, tag, puuv_ifa) %>%
-  rename(neighbor = tag) %>% rename(neighbor_puuv = puuv_ifa) %>%
-  mutate(year = as.numeric(as.character(year)),
-         site = as.character(site),
-         month = as.character(month)) 
-
-whodunnit <- edges_summary21 %>% left_join(puuvstatus, by=c("year", "site", "month", "neighbor"))
-
-whodunnit %>% drop_na(neighbor_puuv)
