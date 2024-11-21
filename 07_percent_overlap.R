@@ -615,3 +615,36 @@ edges_summary23 <- edges_summary23 %>% drop_na(weight) %>% filter(weight>0) %>%
 saveRDS(edges_summary23, "edges_summary23.rds")
 
 ####---------- end ---------------------------------------
+
+
+
+
+
+
+#new stuff Nov 21 - getting some variance measure per vole / season
+  ## using SEASONAL centroids and fulltrap dataset
+
+#calculate weighted average trapped location per SEASON per vole
+season.centroids21 <- ft21 %>% group_by(site, season, tag) %>%
+  mutate(s.x = mean(x),
+         s.y = mean(y)) %>% #weighted average centroid per SEASON
+  select(site, season, tag, s.x, s.y) %>%
+  slice(1) #keep one entry per vole
+
+#trip down fulltrap to just what we need
+ft21 <- ft21 %>% select(site, season, month, occ.sess, tag, x, y)
+#join fulltrap with SEASONAL centroid locations per vole
+#calculate mean trapped dist from centroid per season (not quite a variance... more like std dev)
+#https://stats.stackexchange.com/questions/13272/2d-analog-of-standard-deviation
+  #std deviation lives in the same units as your data, variance is units^2
+seasonalvar21 <- ft21 %>% left_join(season.centroids21, by=c("site", "season", "tag")) %>%
+  mutate(x = x*10, y = y*10,
+         s.x = s.x*10, s.y = s.y*10) %>% #convert trap units to meters
+  mutate(dist = sqrt((x-s.x)^2+(y-s.y)^2)) %>% #calculate dist bw each trapped location and centroid
+  group_by(site, season, tag) %>%
+  summarise(avg.dist = mean(dist))
+
+
+
+
+  
