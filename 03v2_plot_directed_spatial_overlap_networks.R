@@ -2,7 +2,6 @@
 
 ###------------------------------------------------------------------------------
 
-
 # load packages
 library(here) #v 1.0.1
 library(tidyverse) #v 2.0.0
@@ -179,7 +178,7 @@ for(i in 1:length(overlap_network_list)) {
 #                                           legend.box.margin=margin(20,0,0,0))
 # 
 #   #save the composite figure as .png
-#   ggsave(filename = paste("pct_overlap_", "fxnlgrp_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
+#   ggsave(filename = paste("pct_overlap_", "HR_", names(overlap_network_list)[[i]], "_2021", ".png", sep = ""),
 #          plot=last_plot(),
 #          width=19, height=4, units="in",
 #          dpi=600)
@@ -204,7 +203,7 @@ for(i in 1:length(overlap_network_list)) {
 #                                           plot.margin=margin(c(0,35,0,35)),
 #                                           legend.box.margin=margin(20,0,0,0))
 #   #save the composite figure as .png
-#   ggsave(filename = paste("pct_overlap_", "fxnlgrp_", names(overlap_network_list)[[i]], "_2022", ".png", sep = ""),
+#   ggsave(filename = paste("pct_overlap_", "HR_", names(overlap_network_list)[[i]], "_2022", ".png", sep = ""),
 #          plot=last_plot(),
 #          width=19, height=4, units="in",
 #          dpi=600)
@@ -230,7 +229,7 @@ for(i in 1:length(graph_list)){
                                           plot.margin=margin(c(0,35,0,35)),
                                           legend.box.margin=margin(20,0,0,0))
   #save the composite figure as .png
-  ggsave(filename = paste("pct_overlap_", "fxnlgrp_", names(overlap_network_list)[[i]], "_2023", ".png", sep = ""),
+  ggsave(filename = paste("pct_overlap_", "HR_", names(overlap_network_list)[[i]], "_2023", ".png", sep = ""),
          plot=last_plot(),
          width=19, height=4, units="in",
          dpi=600)
