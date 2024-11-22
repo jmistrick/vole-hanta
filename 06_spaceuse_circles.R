@@ -178,23 +178,29 @@ dev.off()
 
 ####----------- CREATE 'CIRCLES' df for PLOTTING SPACE USE KERNELS -----------------
 
-#for 2021 data - 95% peripheral HR
-circles21 <- left_join(centroids21, trapdata21, by=c("tag", "month", "site")) %>%
-  unite(stsb, season, trt, sex, season_breeder) %>% left_join(params21, by="stsb") %>%
-  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #make sure month is a factor
-  separate_wider_delim(stsb, delim="_", names=c("season", "food_trt", "helm_trt", "sex", "season_breeder")) %>%
-  unite(trt, food_trt, helm_trt) %>%
-  unite(fxnl_grp, sex, season_breeder, remove=FALSE) %>%
-  mutate(rad_0.05 = (log((1/0.05)-1) + a) / (-b))
+#### INSTEAD - (Nov 21, 2024) USE THE 'homerange2#' files from '07_percent_overlap' file - with mixed size HRs
+#NOV 21, 2024 - using the 'homerange21' file instead of circles21 just to try it
+circles21 <- homerange21
 
-#for 2022 data - 95% peripheral HR
-circles22 <- left_join(centroids22, trapdata22, by=c("tag", "month", "site")) %>%
-  unite(stsb, season, trt, sex, season_breeder) %>% left_join(params22, by="stsb") %>%
-  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #make sure month is a factor
-  separate_wider_delim(stsb, delim="_", names=c("season", "food_trt", "helm_trt", "sex", "season_breeder")) %>%
-  unite(trt, food_trt, helm_trt) %>%
-  unite(fxnl_grp, sex, season_breeder, remove=FALSE) %>%
-  mutate(rad_0.05 = (log((1/0.05)-1) + a) / (-b))
+circles22 <- homerange22
+
+# #for 2021 data - 95% peripheral HR
+# circles21 <- left_join(centroids21, trapdata21, by=c("tag", "month", "site")) %>%
+#   unite(stsb, season, trt, sex, season_breeder) %>% left_join(params21, by="stsb") %>%
+#   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #make sure month is a factor
+#   separate_wider_delim(stsb, delim="_", names=c("season", "food_trt", "helm_trt", "sex", "season_breeder")) %>%
+#   unite(trt, food_trt, helm_trt) %>%
+#   unite(fxnl_grp, sex, season_breeder, remove=FALSE) %>%
+#   mutate(rad_0.05 = (log((1/0.05)-1) + a) / (-b))
+# 
+# #for 2022 data - 95% peripheral HR
+# circles22 <- left_join(centroids22, trapdata22, by=c("tag", "month", "site")) %>%
+#   unite(stsb, season, trt, sex, season_breeder) %>% left_join(params22, by="stsb") %>%
+#   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>% #make sure month is a factor
+#   separate_wider_delim(stsb, delim="_", names=c("season", "food_trt", "helm_trt", "sex", "season_breeder")) %>%
+#   unite(trt, food_trt, helm_trt) %>%
+#   unite(fxnl_grp, sex, season_breeder, remove=FALSE) %>%
+#   mutate(rad_0.05 = (log((1/0.05)-1) + a) / (-b))
 
 
 ##---------------- CREATE A NESTED LIST of CIRCLES (nested by site, month) --------------------
@@ -261,7 +267,7 @@ fxnl.colors <- c(F_breeder="#c9184a", F_nonbreeder="#ffa9b9", M_breeder="#023e8a
 
 for(i in 1:length(circles21_list)) {
 
-  png(filename = paste("spaceuse_kernel_", "rad0.05_byfxnl_", names(circles21_list)[[i]], "_2021", ".png", sep = ""),
+  png(filename = paste("spaceuse_kernel_", "HR_rad_", names(circles21_list)[[i]], "_2021", ".png", sep = ""),
       width=18 , height=5, units="in", res=600)
 
   p <- list()
@@ -274,8 +280,8 @@ for(i in 1:length(circles21_list)) {
     p[[j]] <- data %>%
       ggplot() +
       geom_point(aes(x=x, y=y, color=fxnl_grp), show.legend=FALSE) +
-      xlim(-1.5,13) + ylim(-1.5,13) +
-      geom_circle( aes(x0=x, y0=y, r=rad_0.05, fill=fxnl_grp), alpha=0.5) +
+      xlim(-3,15) + ylim(-3,15) +
+      geom_circle( aes(x0=x, y0=y, r=HR_rad, fill=fxnl_grp), alpha=0.5) +
       scale_color_manual(values=fxnl.colors) +
       scale_fill_manual(values=fxnl.colors) +
       geom_rect(aes(xmin = 0, xmax = 11, ymin = 0, ymax = 11),
@@ -302,7 +308,7 @@ for(i in 1:length(circles21_list)) {
 
 for(i in 1:length(circles22_list)) {
 
-  png(filename = paste("spaceuse_kernel_", "rad0.05_byfxnl_", names(circles22_list)[[i]], "_2022", ".png", sep = ""),
+  png(filename = paste("spaceuse_kernel_", "HR_rad_", names(circles22_list)[[i]], "_2022", ".png", sep = ""),
       width=18 , height=5, units="in", res=600)
 
   p <- list()
@@ -315,8 +321,8 @@ for(i in 1:length(circles22_list)) {
     p[[j]] <- data %>%
       ggplot() +
       geom_point(aes(x=x, y=y, color=fxnl_grp), show.legend=FALSE) +
-      xlim(-1.5,13) + ylim(-1.5,13) +
-      geom_circle( aes(x0=x, y0=y, r=rad_0.05, fill=fxnl_grp), alpha=0.5) +
+      xlim(-4,14) + ylim(-4,14) +
+      geom_circle( aes(x0=x, y0=y, r=HR_rad, fill=fxnl_grp), alpha=0.5) +
       scale_color_manual(values=fxnl.colors) +
       scale_fill_manual(values=fxnl.colors) +
       geom_rect(aes(xmin = 0, xmax = 11, ymin = 0, ymax = 11),
