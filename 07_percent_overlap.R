@@ -56,126 +56,138 @@ trapdata23 <- ft23 %>% dplyr::select(c(year, season, trt, site, month, tag, sex,
 
 #space use data - included both core 50% and periphery 95% HR
 spaceusedata <- rbind(params21, params22, params23) %>%
-  mutate(rad_50_trap = (log((1/0.5)-1) + a) / (-b)) %>% #calculate the radius ("trap units") where probability of detection is 50%
-  mutate(rad_50_m = rad_50_trap*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
+  # mutate(rad_50_trap = (log((1/0.5)-1) + a) / (-b)) %>% #calculate the radius ("trap units") where probability of detection is 50%
+  # mutate(rad_50_m = rad_50_trap*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
   mutate(rad_95_trap = (log((1/0.05)-1) + a) / (-b)) %>% #calculate the radius ("trap units") where probability of detection is 95%
   mutate(rad_95_m = rad_95_trap*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
   separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
   unite(trt, foodtrt, helmtrt) %>%
-  dplyr::select(-c(a,b,)) %>%
+  dplyr::select(-c(a,b,rad_95_m)) %>%
+  rename(HR_rad = rad_95_trap) %>% #using the trap units version
   mutate(season = factor(season, levels=c("summer", "fall"))) %>%
   mutate(trt = factor(trt, levels=c("unfed_control", "unfed_deworm",
                                     "fed_control", "fed_deworm")))
 
 ##-----------------------------------------------
 
-#join all the data needed for HR circles
+
+##############################################################################
+##new stuff Nov 21, 2024 - getting some "variance" measure per vole / season##
+########### using SEASONAL centroids and fulltrap dataset ####################
+##############################################################################
+
+###----------2021-----------
+
+#calculate weighted average trapped location per SEASON per vole
+season.centroids21 <- ft21 %>% group_by(site, season, tag) %>%
+  mutate(s.x = mean(x),
+         s.y = mean(y)) %>% #weighted average centroid per SEASON
+  select(site, season, tag, s.x, s.y) %>%
+  slice(1) #keep one entry per vole
+
+#trip down fulltrap to just what we need
+ft21 <- ft21 %>% select(site, season, month, occ.sess, tag, x, y)
+#join fulltrap with SEASONAL centroid locations per vole
+#calculate mean trapped dist from centroid per season (not quite a variance... more like std dev)
+#https://stats.stackexchange.com/questions/13272/2d-analog-of-standard-deviation
+#std deviation lives in the same units as your data, variance is units^2
+season.rad21 <- ft21 %>% left_join(season.centroids21, by=c("site", "season", "tag")) %>%
+  mutate(x = x, y = y,
+         s.x = s.x, s.y = s.y) %>% #convert trap units to meters
+  mutate(dist = sqrt((x-s.x)^2+(y-s.y)^2)) %>% #calculate dist bw each trapped location and centroid
+  group_by(site, season, tag) %>%
+  summarise(HR_rad = mean(dist)) %>%
+  filter(HR_rad>0) #remove voles with HR_rad=0
+#voles with only 1 capture OR only captures in 1 trap will all have HR_rad=0
+
+###-----------2022------------
+
+#calculate weighted average trapped location per SEASON per vole
+season.centroids22 <- ft22 %>% group_by(site, season, tag) %>%
+  mutate(s.x = mean(x),
+         s.y = mean(y)) %>% #weighted average centroid per SEASON
+  select(site, season, tag, s.x, s.y) %>%
+  slice(1) #keep one entry per vole
+
+#trip down fulltrap to just what we need
+ft22 <- ft22 %>% select(site, season, month, occ.sess, tag, x, y)
+#join fulltrap with SEASONAL centroid locations per vole
+#calculate mean trapped dist from centroid per season (not quite a variance... more like std dev)
+#https://stats.stackexchange.com/questions/13272/2d-analog-of-standard-deviation
+#std deviation lives in the same units as your data, variance is units^2
+season.rad22 <- ft22 %>% left_join(season.centroids22, by=c("site", "season", "tag")) %>%
+  mutate(x = x, y = y,
+         s.x = s.x, s.y = s.y) %>% #convert trap units to meters
+  mutate(dist = sqrt((x-s.x)^2+(y-s.y)^2)) %>% #calculate dist bw each trapped location and centroid
+  group_by(site, season, tag) %>%
+  summarise(HR_rad = mean(dist)) %>%
+  filter(HR_rad>0) #remove voles with HR_rad=0
+#voles with only 1 capture OR only captures in 1 trap will all have HR_rad=0
+
+###----------2023-------------
+
+#calculate weighted average trapped location per SEASON per vole
+season.centroids23 <- ft23 %>% group_by(site, season, tag) %>%
+  mutate(s.x = mean(x),
+         s.y = mean(y)) %>% #weighted average centroid per SEASON
+  select(site, season, tag, s.x, s.y) %>%
+  slice(1) #keep one entry per vole
+
+#trip down fulltrap to just what we need
+ft23 <- ft23 %>% select(site, season, month, occ.sess, tag, x, y)
+#join fulltrap with SEASONAL centroid locations per vole
+#calculate mean trapped dist from centroid per season (not quite a variance... more like std dev)
+#https://stats.stackexchange.com/questions/13272/2d-analog-of-standard-deviation
+#std deviation lives in the same units as your data, variance is units^2
+season.rad23 <- ft23 %>% left_join(season.centroids23, by=c("site", "season", "tag")) %>%
+  mutate(x = x, y = y,
+         s.x = s.x, s.y = s.y) %>% #convert trap units to meters
+  mutate(dist = sqrt((x-s.x)^2+(y-s.y)^2)) %>% #calculate dist bw each trapped location and centroid
+  group_by(site, season, tag) %>%
+  summarise(HR_rad = mean(dist)) %>%
+  filter(HR_rad>0) #remove voles with HR_rad=0
+#voles with only 1 capture OR only captures in 1 trap will all have HR_rad=0
+
+
+
+
+##-----------------------------------------------
+
+#2021 join all the data needed for HR circles
 homerange21 <- trapdata21 %>% rename(breeder = season_breeder) %>% 
-  left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>%
-  left_join(centroids21, by=c("tag", "month", "site")) %>%
-  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct")))
-#join all the data needed for HR circles
+  left_join(season.rad21, by=c("season", "site", "tag")) %>% #add HR_rad for known seasonal HRs
+  rows_patch(spaceusedata, by=c("year", "season", "trt", "sex", "breeder"), unmatched = "ignore") %>%
+  # left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>% 
+      #use this if NOT using seasonal HRs - replaces two lines above
+  left_join(centroids21, by=c("tag", "month", "site")) %>% #monthly centroid locations
+  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>%
+  rename(season_breeder = breeder) %>%
+  unite(fxnl_grp, sex, season_breeder, sep="_")
+
+#2022 join all the data needed for HR circles
 homerange22 <- trapdata22 %>% rename(breeder = season_breeder) %>% 
-  left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>%
-  left_join(centroids22, by=c("tag", "month", "site")) %>%
-  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct")))
-#join all the data needed for HR circles
+  left_join(season.rad22, by=c("season", "site", "tag")) %>% #add HR_rad for known seasonal HRs
+  rows_patch(spaceusedata, by=c("year", "season", "trt", "sex", "breeder"), unmatched = "ignore") %>%
+  # left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>% 
+  #use this if NOT using seasonal HRs - replaces two lines above 
+  left_join(centroids22, by=c("tag", "month", "site")) %>% #monthly centroid locations
+  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>%
+  rename(season_breeder = breeder) %>%
+  unite(fxnl_grp, sex, season_breeder, sep="_")
+
+#2023 join all the data needed for HR circles
 homerange23 <- trapdata23 %>% rename(breeder = season_breeder) %>% 
-  left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>%
-  left_join(centroids23, by=c("tag", "month", "site")) %>%
-  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct")))
+  left_join(season.rad23, by=c("season", "site", "tag")) %>% #add HR_rad for known seasonal HRs
+  rows_patch(spaceusedata, by=c("year", "season", "trt", "sex", "breeder"), unmatched = "ignore") %>%
+  # left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>% 
+  #use this if NOT using seasonal HRs - replaces two lines above
+  left_join(centroids23, by=c("tag", "month", "site")) %>% #monthly centroid locations
+  mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>%
+  rename(season_breeder = breeder) %>%
+  unite(fxnl_grp, sex, season_breeder, sep="_")
 
 
 ###---------------------------------------------
-
-# #this was useful, but I don't think I want to make each month a multipoint because it "sees" all the voles at a site as a single entity,
-#   #not several different polygons (which is what I did in the loop below)
-# #buffer multipoint with different distances (https://stackoverflow.com/questions/47057316/st-buffer-multipoint-with-different-distance)
-# 
-# #### JUST SOME LEARNING:
-# #sfg = st_point / st_polygon (just one GEOMETRY - a point, a polygon, a multipolygon)
-# #sfc <- is a simple feature list column - it's the COLUMN of multiple sf objects as a list (ie just the locations of the geometries)
-#   #CLASS "sfc" "sfc_point"
-# #st_sf <- makes the SIMPLE FEATURE object - which has a geometry column AND the attributes of each geometry (it's basically a special df)
-#   #CLASS "sf" "data.frame"
-# 
-# 
-# #subset data for just one site/month (to get code running, will eventually need to get this all into ONE GIANT LOOP)
-# #just pull the vole ID, radius, and x-y coordinates of monthly centroid for now
-# data <- homerange21 %>% filter(month=="july", site=="hevonen") %>% ungroup() %>%
-#   select(x, y, rad_95_trap, tag, sex, breeder)
-# 
-# ### these steps will make an sf object for a site/month and plot it
-# 
-# #make a matrix of just the coordinates
-# coords <- matrix(c(data$x,data$y), ncol = 2)
-# #convert to sf object
-# coords_sf <- st_as_sf(data, coords=c("x","y"))
-#     #st_as_sf() provide the object to be converted to sf (ie the df) - anything extra in the df becomes an attribute
-#     #in the case of point data, coords= give the columns containing the coordinates (these points become the "geometry" column in the sf)
-#     #if you don't provide a CRS, sf will treat as Euclidean space
-# #buffer each point with the corresponding radius
-# buff_sf <- st_buffer(coords_sf, dist=data$rad_95_trap) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
-#     #I think now the points are essentially polygons
-#     #with no CRS, the numeric dist is assumed to have units of the coordinates (which is fine, all "trap units")
-# 
-# 
-# #plot with ggplot (can ploth with base R too - plot() )
-# ggplot(buff_sf) + geom_sf(aes(fill=sex, alpha=0.5)) +
-#   geom_sf_label(aes(label=tag)) #include label with vole ID
-# 
-# 
-# ####----------------------
-# 
-# # #the following code just needs the 'data' file which is currently just one site/month
-# 
-# #basically here I want to make each vole's HR its own polygon, then combine all those polygons together into a single sf
-# #NOT using a multipoint or multipolygon because that acts like all the circles are one layer and doesn't "see" overlaps the same way (I think)
-# 
-# #empty list to hold results
-# poly_list <- list()
-# 
-# #loop over df rows #https://campus.datacamp.com/courses/intermediate-r-for-finance/loops-3?ex=10
-# for(i in 1:nrow(data)){
-# 
-#   #pull each row (vole) as its own df
-#   df  <- as.data.frame(data[i,])
-#   coords <- matrix(c(df$x,df$y), ncol = 2) #centroid coordinates
-#   tt <- st_as_sf(df, coords=c("x","y"))
-#   sf <- st_buffer(tt, df$rad_95_trap) #buffer with radius
-#   sf$area = st_area(sf) #add area of polygon IN TRAP UNITS
-# 
-#   poly_list[[i]] <- sf #save result as one item of the list (list will have one item for each vole that site/month)
-# 
-# }
-# 
-# #convert list of sf's to one sf
-#   #(https://stackoverflow.com/questions/51312935/convert-a-list-of-sf-objects-into-one-sf)
-# single_sf <- do.call(rbind, poly_list)
-# 
-# #and now some slick code someone else wrote to compute the pairwise overlap between all the polygons, and have directional % overlap
-# #https://stackoverflow.com/questions/70009412/how-to-compute-all-pairwise-interaction-between-polygons-and-the-the-percentage
-# # nOTE 'st_overlaps' will not capture polygons contained within another, for that you want 'st_intersects'
-# 
-# #regarding the sf::st_intersection bit: "sf::st_intersection() is vectorized. So it will find & return all the intersections of
-#     #the first & second argument for you. In this case, the two arguments are the same set of polygons."
-# 
-# weighted_overlap <- st_intersection(single_sf, single_sf) %>%
-#   dplyr::mutate(area = st_area(.),
-#                 pct_overlap = area / area.1 ) %>% # "area" is the area of overlap, "area.1" is the total area of focal vole's HR
-#   tibble::as_tibble() %>%
-#   dplyr::select(neighbor = tag,
-#                 focal = tag.1,
-#                 pct_overlap, ) %>% #selecting and changing column names at the same time
-#   filter(pct_overlap != 0) %>% #remove pairs with no overlap
-#   filter(focal != neighbor) %>% #remove self-overlaps
-#   select(focal, neighbor, pct_overlap)
-# 
-# #the output is a tibble with three columns: focal, neighbor, and pct_overlap
-# #pct_overlap answers the question: "how much of focal's HR is shared with neighbor?"
-
-
-##-----------------------------------
 
 
 #so what I want to do is separate homerange2X into a nested list by site/month (like I've done before)
@@ -215,7 +227,7 @@ for(i in 1:length(site_month_list)){
     #convert to sf object
     coords_sf <- st_as_sf(data, coords=c("x","y")) 
     #buffer each point with the corresponding radius
-    buff_sf <- st_buffer(coords_sf, dist=data$rad_95_trap) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
+    buff_sf <- st_buffer(coords_sf, dist=data$HR_rad) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
     #add the area
     buff_sf$area <- st_area(buff_sf)
     
@@ -267,8 +279,8 @@ for(i in 1:length(pct_overlap_list)){
 
 saveRDS(pct_overlap_list, "pct_overlap_list21.rds")
 
-# #load it
-# pct_overlap_list21 <- readRDS(here("pct_overlap_list21.rds"))
+#load it
+pct_overlap_list21 <- readRDS(here("pct_overlap_list21.rds"))
 
 
 
@@ -362,7 +374,7 @@ for(i in 1:length(site_month_list)){
     #convert to sf object
     coords_sf <- st_as_sf(data, coords=c("x","y")) 
     #buffer each point with the corresponding radius
-    buff_sf <- st_buffer(coords_sf, dist=data$rad_95_trap) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
+    buff_sf <- st_buffer(coords_sf, dist=data$HR_rad) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
     #add the area
     buff_sf$area <- st_area(buff_sf)
     
@@ -508,7 +520,7 @@ for(i in 1:length(site_month_list)){
     #convert to sf object
     coords_sf <- st_as_sf(data, coords=c("x","y")) 
     #buffer each point with the corresponding radius
-    buff_sf <- st_buffer(coords_sf, dist=data$rad_95_trap) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
+    buff_sf <- st_buffer(coords_sf, dist=data$HR_rad) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
     #add the area
     buff_sf$area <- st_area(buff_sf)
     
@@ -621,30 +633,97 @@ saveRDS(edges_summary23, "edges_summary23.rds")
 
 
 
-#new stuff Nov 21 - getting some variance measure per vole / season
-  ## using SEASONAL centroids and fulltrap dataset
-
-#calculate weighted average trapped location per SEASON per vole
-season.centroids21 <- ft21 %>% group_by(site, season, tag) %>%
-  mutate(s.x = mean(x),
-         s.y = mean(y)) %>% #weighted average centroid per SEASON
-  select(site, season, tag, s.x, s.y) %>%
-  slice(1) #keep one entry per vole
-
-#trip down fulltrap to just what we need
-ft21 <- ft21 %>% select(site, season, month, occ.sess, tag, x, y)
-#join fulltrap with SEASONAL centroid locations per vole
-#calculate mean trapped dist from centroid per season (not quite a variance... more like std dev)
-#https://stats.stackexchange.com/questions/13272/2d-analog-of-standard-deviation
-  #std deviation lives in the same units as your data, variance is units^2
-seasonalvar21 <- ft21 %>% left_join(season.centroids21, by=c("site", "season", "tag")) %>%
-  mutate(x = x*10, y = y*10,
-         s.x = s.x*10, s.y = s.y*10) %>% #convert trap units to meters
-  mutate(dist = sqrt((x-s.x)^2+(y-s.y)^2)) %>% #calculate dist bw each trapped location and centroid
-  group_by(site, season, tag) %>%
-  summarise(avg.dist = mean(dist))
 
 
+###-------------- OLD CODE - NOT USING -----------------------------
 
+# #this was useful, but I don't think I want to make each month a multipoint because it "sees" all the voles at a site as a single entity,
+#   #not several different polygons (which is what I did in the loop below)
+# #buffer multipoint with different distances (https://stackoverflow.com/questions/47057316/st-buffer-multipoint-with-different-distance)
+# 
+# #### JUST SOME LEARNING:
+# #sfg = st_point / st_polygon (just one GEOMETRY - a point, a polygon, a multipolygon)
+# #sfc <- is a simple feature list column - it's the COLUMN of multiple sf objects as a list (ie just the locations of the geometries)
+#   #CLASS "sfc" "sfc_point"
+# #st_sf <- makes the SIMPLE FEATURE object - which has a geometry column AND the attributes of each geometry (it's basically a special df)
+#   #CLASS "sf" "data.frame"
+# 
+# 
+# #subset data for just one site/month (to get code running, will eventually need to get this all into ONE GIANT LOOP)
+# #just pull the vole ID, radius, and x-y coordinates of monthly centroid for now
+# data <- homerange21 %>% filter(month=="july", site=="hevonen") %>% ungroup() %>%
+#   select(x, y, rad_95_trap, tag, sex, breeder)
+# 
+# ### these steps will make an sf object for a site/month and plot it
+# 
+# #make a matrix of just the coordinates
+# coords <- matrix(c(data$x,data$y), ncol = 2)
+# #convert to sf object
+# coords_sf <- st_as_sf(data, coords=c("x","y"))
+#     #st_as_sf() provide the object to be converted to sf (ie the df) - anything extra in the df becomes an attribute
+#     #in the case of point data, coords= give the columns containing the coordinates (these points become the "geometry" column in the sf)
+#     #if you don't provide a CRS, sf will treat as Euclidean space
+# #buffer each point with the corresponding radius
+# buff_sf <- st_buffer(coords_sf, dist=data$rad_95_trap) #coords_sf is built from data, so the order of the points should be identical so each point gets its correct radius
+#     #I think now the points are essentially polygons
+#     #with no CRS, the numeric dist is assumed to have units of the coordinates (which is fine, all "trap units")
+# 
+# 
+# #plot with ggplot (can ploth with base R too - plot() )
+# ggplot(buff_sf) + geom_sf(aes(fill=sex, alpha=0.5)) +
+#   geom_sf_label(aes(label=tag)) #include label with vole ID
+# 
+# 
+# ####----------------------
+# 
+# # #the following code just needs the 'data' file which is currently just one site/month
+# 
+# #basically here I want to make each vole's HR its own polygon, then combine all those polygons together into a single sf
+# #NOT using a multipoint or multipolygon because that acts like all the circles are one layer and doesn't "see" overlaps the same way (I think)
+# 
+# #empty list to hold results
+# poly_list <- list()
+# 
+# #loop over df rows #https://campus.datacamp.com/courses/intermediate-r-for-finance/loops-3?ex=10
+# for(i in 1:nrow(data)){
+# 
+#   #pull each row (vole) as its own df
+#   df  <- as.data.frame(data[i,])
+#   coords <- matrix(c(df$x,df$y), ncol = 2) #centroid coordinates
+#   tt <- st_as_sf(df, coords=c("x","y"))
+#   sf <- st_buffer(tt, df$rad_95_trap) #buffer with radius
+#   sf$area = st_area(sf) #add area of polygon IN TRAP UNITS
+# 
+#   poly_list[[i]] <- sf #save result as one item of the list (list will have one item for each vole that site/month)
+# 
+# }
+# 
+# #convert list of sf's to one sf
+#   #(https://stackoverflow.com/questions/51312935/convert-a-list-of-sf-objects-into-one-sf)
+# single_sf <- do.call(rbind, poly_list)
+# 
+# #and now some slick code someone else wrote to compute the pairwise overlap between all the polygons, and have directional % overlap
+# #https://stackoverflow.com/questions/70009412/how-to-compute-all-pairwise-interaction-between-polygons-and-the-the-percentage
+# # nOTE 'st_overlaps' will not capture polygons contained within another, for that you want 'st_intersects'
+# 
+# #regarding the sf::st_intersection bit: "sf::st_intersection() is vectorized. So it will find & return all the intersections of
+#     #the first & second argument for you. In this case, the two arguments are the same set of polygons."
+# 
+# weighted_overlap <- st_intersection(single_sf, single_sf) %>%
+#   dplyr::mutate(area = st_area(.),
+#                 pct_overlap = area / area.1 ) %>% # "area" is the area of overlap, "area.1" is the total area of focal vole's HR
+#   tibble::as_tibble() %>%
+#   dplyr::select(neighbor = tag,
+#                 focal = tag.1,
+#                 pct_overlap, ) %>% #selecting and changing column names at the same time
+#   filter(pct_overlap != 0) %>% #remove pairs with no overlap
+#   filter(focal != neighbor) %>% #remove self-overlaps
+#   select(focal, neighbor, pct_overlap)
+# 
+# #the output is a tibble with three columns: focal, neighbor, and pct_overlap
+# #pct_overlap answers the question: "how much of focal's HR is shared with neighbor?"
+
+
+##-----------------------------------
 
   
