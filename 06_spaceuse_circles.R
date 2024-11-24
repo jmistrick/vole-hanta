@@ -184,6 +184,8 @@ circles21 <- homerange21
 
 circles22 <- homerange22
 
+circles23 <- homerange23
+
 # #for 2021 data - 95% peripheral HR
 # circles21 <- left_join(centroids21, trapdata21, by=c("tag", "month", "site")) %>%
 #   unite(stsb, season, trt, sex, season_breeder) %>% left_join(params21, by="stsb") %>%
@@ -246,6 +248,31 @@ for(i in 1:length(circles22_site_list)){
 
 #name 1e list element as site (2e list elements are months May-Oct)
 names(circles22_list) <- site_names
+
+### OUTPUT: CIRCLES##_LIST is a nested list of length 12
+#1e level is all the sites (12)
+#2e level is all the months (June-October) per site (5) excluding May
+
+
+####--------------------repeat for 2023 data----------------------
+
+#save a vector of the site names (alphabetical order)
+site_names <- unique(circles23$site) %>% sort()
+
+#split() makes a list consisting of individual data.frames based on a condition ('site' in this case)
+circles23_site_list <- split(circles23, circles23$site)
+
+#create new list to hold nested site, month capture
+circles23_list <- list()
+
+for(i in 1:length(circles23_site_list)){
+  # print(i)
+  temp_list <- split(circles23_site_list[[i]], circles23_site_list[[i]]$month)
+  circles23_list[[i]] <- temp_list
+}
+
+#name 1e list element as site (2e list elements are months May-Oct)
+names(circles23_list) <- site_names
 
 ### OUTPUT: CIRCLES##_LIST is a nested list of length 12
 #1e level is all the sites (12)
@@ -343,6 +370,49 @@ for(i in 1:length(circles22_list)) {
   dev.off()
 
 }
+
+####------------------repeat for 2023---------------------------
+
+
+for(i in 1:length(circles23_list)) {
+  
+  png(filename = paste("spaceuse_kernel_", "HR_rad_", names(circles23_list)[[i]], "_2023", ".png", sep = ""),
+      width=18 , height=5, units="in", res=600)
+  
+  p <- list()
+  
+  for(j in 1:length(circles23_list[[i]])){
+    
+    data <- circles23_list[[i]][[j]]
+    
+    #plot
+    p[[j]] <- data %>%
+      ggplot() +
+      geom_point(aes(x=x, y=y, color=fxnl_grp), show.legend=FALSE) +
+      xlim(-4,14) + ylim(-4,14) +
+      geom_circle( aes(x0=x, y0=y, r=HR_rad, fill=fxnl_grp), alpha=0.5) +
+      scale_color_manual(values=fxnl.colors) +
+      scale_fill_manual(values=fxnl.colors) +
+      geom_rect(aes(xmin = 0, xmax = 11, ymin = 0, ymax = 11),
+                fill=NA, alpha = 0.4, color = "#444444", linetype=2) +
+      theme_void() +
+      theme(plot.title = element_text(size= 16, hjust = 0.5),
+            legend.position = "none",
+            axis.ticks = element_blank(),
+            axis.text  = element_blank(),
+            axis.title = element_blank()) +
+      labs(title=paste(names(circles23_list[[i]])[j])) +
+      coord_fixed()
+    
+  }
+  
+  do.call(grid.arrange, c(p, ncol=5, top=paste( c(names(circles23_list)[[i]]), "2023") )) #plot all the plots in list p
+  
+  dev.off()
+  
+}
+
+
 
 #####--------------------------------END--------------------------------------------
 
