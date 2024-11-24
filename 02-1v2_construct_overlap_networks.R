@@ -2,6 +2,9 @@
 #Calculate Network Metrics
 
 
+########### Nov 2024 - updated with the variable size HRs #################
+
+
 ###-------------------------------------------------
 
 #load packages
@@ -76,8 +79,8 @@ ft23 <- readRDS(here("fulltrap23_11.11.24.rds"))
   # # load the network data
   # overlap_network_list <- pct_overlap_list21
   
-  # #### 2022 ####
-  # 
+  #### 2022 ####
+
   # #load, clean the fulltrap dataset - add columns for sts and sb
   # fulltrap <- ft22 %>%
   #   unite("sts", season, trt, sex, remove=FALSE) %>% #add sts (season,treatment,sex) column to match params_summary
