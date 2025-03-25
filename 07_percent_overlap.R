@@ -37,15 +37,15 @@ centroids23 <- readRDS(here("monthly_centroids23.rds")) %>% rename(tag = Tag_ID)
 
 #load fulltrap data (trapping metadata for each capture) - pull PIT tag, month, site
 ft21 <- readRDS(here("fulltrap21_11.11.24.rds"))
-trapdata21 <- ft21 %>% dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
+trapmetadata21 <- ft21 %>% dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
   group_by(tag, month) %>% slice(1)
 
 ft22 <- readRDS(here("fulltrap22_11.11.24.rds"))
-trapdata22 <- ft22 %>% dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
+trapmetadata22 <- ft22 %>% dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
   group_by(tag, month) %>% slice(1)
 
 ft23 <- readRDS(here("fulltrap23_11.11.24.rds"))
-trapdata23 <- ft23 %>% dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
+trapmetadata23 <- ft23 %>% dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
   group_by(tag, month) %>% slice(1)
 
 
@@ -63,7 +63,7 @@ spaceusedata <- rbind(params21, params22, params23) %>%
   separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
   unite(trt, foodtrt, helmtrt) %>%
   dplyr::select(-c(a,b,rad_95_m)) %>%
-  rename(HR_rad = rad_95_trap) %>% #using the trap units version
+  rename(HR_rad = rad_95_trap) %>% #using the trap units version of 95% peripheral HR
   mutate(season = factor(season, levels=c("summer", "fall"))) %>%
   mutate(trt = factor(trt, levels=c("unfed_control", "unfed_deworm",
                                     "fed_control", "fed_deworm")))
@@ -71,10 +71,26 @@ spaceusedata <- rbind(params21, params22, params23) %>%
 ##-----------------------------------------------
 
 
-##############################################################################
-##new stuff Nov 21, 2024 - getting some "variance" measure per vole / season##
-########### using SEASONAL centroids and fulltrap dataset ####################
-##############################################################################
+################################################################################
+## new stuff Nov 21, 2024 - getting some "variance" measure per vole / season ##
+############ using SEASONAL centroids and fulltrap dataset #####################
+################################################################################
+
+## the goal of the following code is to more explicitly estimate space use for voles with enough captures
+  # in a season to have some idea of what they do. Of course, then we have the issue that summer and fall
+  # are different lengths, BUT we're just going to go with it
+  # I think what is best is if we let voles with at least 3 captures/season have a HR that reflects their
+  # true space use. Anyone with only 1-2 captures in a season gets the avg HR size for their fxnl group.
+  # -- BUT -- what about individuals with 3+ captures in the same trap?
+
+# # YES - there are 23, 28, and 10 voles that are caught at least 3x in a season and only in 1 trap (max caps/season = 6)
+# check <- ft23 %>% group_by(season, tag) %>% mutate(caps_per_season = length(tag), traps_per_season = n_distinct(trap)) %>% ungroup() %>%
+#   filter(caps_per_season>2 & traps_per_season==1) 
+# check %>% summarise(n=n_distinct(tag))
+# ## so we need to do something about these guys because we can *assume* that they have a smaller HR than average
+
+
+
 
 ###----------2021-----------
 
@@ -85,20 +101,23 @@ season.centroids21 <- ft21 %>% group_by(site, season, tag) %>%
   select(site, season, tag, s.x, s.y) %>%
   slice(1) #keep one entry per vole
 
-#trip down fulltrap to just what we need
-ft21 <- ft21 %>% select(site, season, month, occ.sess, tag, x, y)
 #join fulltrap with SEASONAL centroid locations per vole
 #calculate mean trapped dist from centroid per season (not quite a variance... more like std dev)
 #https://stats.stackexchange.com/questions/13272/2d-analog-of-standard-deviation
-#std deviation lives in the same units as your data, variance is units^2
-season.rad21 <- ft21 %>% left_join(season.centroids21, by=c("site", "season", "tag")) %>%
-  mutate(x = x, y = y,
-         s.x = s.x, s.y = s.y) %>% #convert trap units to meters
+  #std deviation lives in the same units as your data, variance is units^2
+season.rad21 <- ft21 %>% select(site, season, month, occ.sess, tag, x, y) %>% #trim down fulltrap to just what we need
+  left_join(season.centroids21, by=c("site", "season", "tag")) %>%
+  # mutate(x = x*10, y = y*10,
+  #        s.x = s.x*10, s.y = s.y*10) %>% #convert trap units to meters
   mutate(dist = sqrt((x-s.x)^2+(y-s.y)^2)) %>% #calculate dist bw each trapped location and centroid
   group_by(site, season, tag) %>%
-  summarise(HR_rad = mean(dist)) %>%
-  filter(HR_rad>0) #remove voles with HR_rad=0
-#voles with only 1 capture OR only captures in 1 trap will all have HR_rad=0
+  mutate(caps_per_season = length(tag)) %>% filter(caps_per_season>2) %>% #only keep voles with at least 3 caps/season
+  summarise(HR_rad = mean(dist)) %>% #units of dist is CURRENTLY TRAP UNITS (*10 to get meters)
+  mutate(HR_rad = case_when(HR_rad == 0 ~ 0.5, HR_rad != 0 ~ HR_rad)) ##FOR NOW - give voles with 3+ caps in one trap a rad of 0.5
+
+### NOTE ### voles with 3+ caps/season AND traps/season=1 will have HR_rad=0
+
+############### WHAT makes sense here? What size HR should those voles caught only in 1 trap have?
 
 ###-----------2022------------
 
@@ -109,20 +128,22 @@ season.centroids22 <- ft22 %>% group_by(site, season, tag) %>%
   select(site, season, tag, s.x, s.y) %>%
   slice(1) #keep one entry per vole
 
-#trip down fulltrap to just what we need
-ft22 <- ft22 %>% select(site, season, month, occ.sess, tag, x, y)
 #join fulltrap with SEASONAL centroid locations per vole
 #calculate mean trapped dist from centroid per season (not quite a variance... more like std dev)
 #https://stats.stackexchange.com/questions/13272/2d-analog-of-standard-deviation
-#std deviation lives in the same units as your data, variance is units^2
-season.rad22 <- ft22 %>% left_join(season.centroids22, by=c("site", "season", "tag")) %>%
-  mutate(x = x, y = y,
-         s.x = s.x, s.y = s.y) %>% #convert trap units to meters
+  #std deviation lives in the same units as your data, variance is units^2
+season.rad22 <- ft22 %>% select(site, season, month, occ.sess, tag, x, y) %>% #trim down fulltrap to just what we need
+  left_join(season.centroids22, by=c("site", "season", "tag")) %>%
+  # mutate(x = x*10, y = y*10,
+  #        s.x = s.x*10, s.y = s.y*10) %>% #convert trap units to meters
   mutate(dist = sqrt((x-s.x)^2+(y-s.y)^2)) %>% #calculate dist bw each trapped location and centroid
   group_by(site, season, tag) %>%
-  summarise(HR_rad = mean(dist)) %>%
-  filter(HR_rad>0) #remove voles with HR_rad=0
-#voles with only 1 capture OR only captures in 1 trap will all have HR_rad=0
+  mutate(caps_per_season = length(tag)) %>% filter(caps_per_season>2) %>% #only keep voles with at least 3 caps/season
+  summarise(HR_rad = mean(dist)) %>% #units of dist is CURRENTLY TRAP UNITS (*10 to get meters)
+  mutate(HR_rad = case_when(HR_rad == 0 ~ 0.5, HR_rad != 0 ~ HR_rad)) ##FOR NOW - give voles with 3+ caps in one trap a rad of 0.5
+
+
+### NOTE ### voles with 3+ caps/season AND traps/season=1 will have HR_rad=0
 
 ###----------2023-------------
 
@@ -133,58 +154,61 @@ season.centroids23 <- ft23 %>% group_by(site, season, tag) %>%
   select(site, season, tag, s.x, s.y) %>%
   slice(1) #keep one entry per vole
 
-#trip down fulltrap to just what we need
-ft23 <- ft23 %>% select(site, season, month, occ.sess, tag, x, y)
 #join fulltrap with SEASONAL centroid locations per vole
 #calculate mean trapped dist from centroid per season (not quite a variance... more like std dev)
 #https://stats.stackexchange.com/questions/13272/2d-analog-of-standard-deviation
-#std deviation lives in the same units as your data, variance is units^2
-season.rad23 <- ft23 %>% left_join(season.centroids23, by=c("site", "season", "tag")) %>%
-  mutate(x = x, y = y,
-         s.x = s.x, s.y = s.y) %>% #convert trap units to meters
+  #std deviation lives in the same units as your data, variance is units^2
+season.rad23 <- ft23 %>% select(site, season, month, occ.sess, tag, x, y) %>% #trim down fulltrap to just what we need
+  left_join(season.centroids23, by=c("site", "season", "tag")) %>%
+  # mutate(x = x*10, y = y*10,
+  #        s.x = s.x*10, s.y = s.y*10) %>% #convert trap units to meters
   mutate(dist = sqrt((x-s.x)^2+(y-s.y)^2)) %>% #calculate dist bw each trapped location and centroid
   group_by(site, season, tag) %>%
-  summarise(HR_rad = mean(dist)) %>%
-  filter(HR_rad>0) #remove voles with HR_rad=0
-#voles with only 1 capture OR only captures in 1 trap will all have HR_rad=0
+  mutate(caps_per_season = length(tag)) %>% filter(caps_per_season>2) %>% #only keep voles with at least 3 caps/season
+  summarise(HR_rad = mean(dist)) %>% #units of dist is CURRENTLY TRAP UNITS (*10 to get meters)
+  mutate(HR_rad = case_when(HR_rad == 0 ~ 0.5, HR_rad != 0 ~ HR_rad)) ##FOR NOW - give voles with 3+ caps in one trap a rad of 0.5
 
+### NOTE ### voles with 3+ caps/season AND traps/season=1 will have HR_rad=0
 
 
 
 ##-----------------------------------------------
 
 #2021 join all the data needed for HR circles
-homerange21 <- trapdata21 %>% rename(breeder = season_breeder) %>% 
+homerange21 <- trapmetadata21 %>% rename(breeder = season_breeder) %>% 
   left_join(season.rad21, by=c("season", "site", "tag")) %>% #add HR_rad for known seasonal HRs
   rows_patch(spaceusedata, by=c("year", "season", "trt", "sex", "breeder"), unmatched = "ignore") %>%
   # left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>% 
       #use this if NOT using seasonal HRs - replaces two lines above
-  left_join(centroids21, by=c("tag", "month", "site")) %>% #monthly centroid locations
+  left_join(centroids21, by=c("tag", "month", "site")) %>% #monthly centroid locations (x,y)
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>%
   rename(season_breeder = breeder) %>%
   unite(fxnl_grp, sex, season_breeder, sep="_")
 
 #2022 join all the data needed for HR circles
-homerange22 <- trapdata22 %>% rename(breeder = season_breeder) %>% 
+homerange22 <- trapmetadata22 %>% rename(breeder = season_breeder) %>% 
   left_join(season.rad22, by=c("season", "site", "tag")) %>% #add HR_rad for known seasonal HRs
   rows_patch(spaceusedata, by=c("year", "season", "trt", "sex", "breeder"), unmatched = "ignore") %>%
   # left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>% 
   #use this if NOT using seasonal HRs - replaces two lines above 
-  left_join(centroids22, by=c("tag", "month", "site")) %>% #monthly centroid locations
+  left_join(centroids22, by=c("tag", "month", "site")) %>% #monthly centroid locations (x,y)
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>%
   rename(season_breeder = breeder) %>%
   unite(fxnl_grp, sex, season_breeder, sep="_")
 
 #2023 join all the data needed for HR circles
-homerange23 <- trapdata23 %>% rename(breeder = season_breeder) %>% 
+homerange23 <- trapmetadata23 %>% rename(breeder = season_breeder) %>% 
   left_join(season.rad23, by=c("season", "site", "tag")) %>% #add HR_rad for known seasonal HRs
   rows_patch(spaceusedata, by=c("year", "season", "trt", "sex", "breeder"), unmatched = "ignore") %>%
   # left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>% 
   #use this if NOT using seasonal HRs - replaces two lines above
-  left_join(centroids23, by=c("tag", "month", "site")) %>% #monthly centroid locations
+  left_join(centroids23, by=c("tag", "month", "site")) %>% #monthly centroid locations (x,y)
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>%
   rename(season_breeder = breeder) %>%
   unite(fxnl_grp, sex, season_breeder, sep="_")
+
+
+##### NOTE - HR_rad is in TRAP UNITS ######
 
 
 ###---------------------------------------------
@@ -236,9 +260,12 @@ for(i in 1:length(site_month_list)){
       dplyr::mutate(area = st_area(.), 
                     pct_overlap = area / area.1 ) %>% # "area" is the area of overlap, "area.1" is the total area of focal vole's HR 
       tibble::as_tibble() %>%
-      dplyr::select(focal = tag, 
-                    neighbor = tag.1, 
+      dplyr::select(focal = tag.1, 
+                    neighbor = tag, 
                     pct_overlap, ) #selecting and changing column names at the same time 
+    
+    ##at this point, tag.1 is FOCAL and tag is neighbor
+    ##answering the question: how much of FOCAL'S HR is shared with NEIGHBOR?
       
     #but we've lost voles that have no overlaps, so we have to add those back
     tags <- data %>% group_by(tag) %>% slice(1) %>% select(tag) #df of all tags recorded for site/month
@@ -250,9 +277,11 @@ for(i in 1:length(site_month_list)){
     weighted_overlap_full <- tag_by_tag %>% left_join(weighted_overlap, by=c("focal", "neighbor")) %>%
       filter(focal != neighbor) %>% #remove self-overlaps
       replace_na(list(pct_overlap=0)) %>% #replace NAs with 0 for overlaps that didn't occur
-      pivot_wider(id_cols = focal, names_from = neighbor, values_from = pct_overlap, values_fill=NA) %>% #convert long format edgelist to wide format adj matrix
-      column_to_rownames(var="focal") %>% #for tibble
+      pivot_wider(id_cols = neighbor, names_from = focal, values_from = pct_overlap, values_fill=NA) %>% #convert long format edgelist to wide format adj matrix
+      column_to_rownames(var="neighbor") %>% #for tibble
       as.matrix()
+    
+    ##column in FOCAL, row is NEIGHBOR - "How much of FOCAL's HR do they share with NEIGHBOR?"
     
     #https://stackoverflow.com/questions/77115183/reorder-matrix-rows-and-columns-based-on-alphabetical-order-of-colnames-and-rown
     weighted_overlap_full <- weighted_overlap_full[sort(rownames(weighted_overlap_full)), sort(colnames(weighted_overlap_full))]
@@ -383,9 +412,12 @@ for(i in 1:length(site_month_list)){
       dplyr::mutate(area = st_area(.), 
                     pct_overlap = area / area.1 ) %>% # "area" is the area of overlap, "area.1" is the total area of focal vole's HR 
       tibble::as_tibble() %>%
-      dplyr::select(focal = tag, 
-                    neighbor = tag.1, 
+      dplyr::select(focal = tag.1, 
+                    neighbor = tag, 
                     pct_overlap, ) #selecting and changing column names at the same time 
+    
+    ##at this point, tag.1 is FOCAL and tag is neighbor
+    ##answering the question: how much of FOCAL'S HR is shared with NEIGHBOR?
     
     #but we've lost voles that have no overlaps, so we have to add those back
     tags <- data %>% group_by(tag) %>% slice(1) %>% select(tag) #df of all tags recorded for site/month
@@ -397,9 +429,11 @@ for(i in 1:length(site_month_list)){
     weighted_overlap_full <- tag_by_tag %>% left_join(weighted_overlap, by=c("focal", "neighbor")) %>%
       filter(focal != neighbor) %>% #remove self-overlaps
       replace_na(list(pct_overlap=0)) %>% #replace NAs with 0 for overlaps that didn't occur
-      pivot_wider(id_cols = focal, names_from = neighbor, values_from = pct_overlap, values_fill=NA) %>% #convert long format edgelist to wide format adj matrix
-      column_to_rownames(var="focal") %>% #for tibble
+      pivot_wider(id_cols = neighbor, names_from = focal, values_from = pct_overlap, values_fill=NA) %>% #convert long format edgelist to wide format adj matrix
+      column_to_rownames(var="neighbor") %>% #for tibble
       as.matrix()
+    
+    ##column in FOCAL, row is NEIGHBOR - "How much of FOCAL's HR do they share with NEIGHBOR?"
     
     #https://stackoverflow.com/questions/77115183/reorder-matrix-rows-and-columns-based-on-alphabetical-order-of-colnames-and-rown
     weighted_overlap_full <- weighted_overlap_full[sort(rownames(weighted_overlap_full)), sort(colnames(weighted_overlap_full))]
@@ -419,7 +453,6 @@ for(i in 1:length(site_month_list)){
 names(pct_overlap_list) <- names(site_month_list)
 
 #rename the sublist items (months) for each site
-#accounting for the fact that most sites have 5 months of data but some have 4 (1 or 2 sites in 2022)
 for(i in 1:length(pct_overlap_list)){
   ifelse( length(pct_overlap_list[[i]]) == 5,
           names(pct_overlap_list[[i]]) <- c("june", "july", "aug", "sept", "oct"),
@@ -529,9 +562,12 @@ for(i in 1:length(site_month_list)){
       dplyr::mutate(area = st_area(.), 
                     pct_overlap = area / area.1 ) %>% # "area" is the area of overlap, "area.1" is the total area of focal vole's HR 
       tibble::as_tibble() %>%
-      dplyr::select(focal = tag, 
-                    neighbor = tag.1, 
+      dplyr::select(focal = tag.1, 
+                    neighbor = tag, 
                     pct_overlap, ) #selecting and changing column names at the same time 
+    
+    ##at this point, tag.1 is FOCAL and tag is neighbor
+    ##answering the question: how much of FOCAL'S HR is shared with NEIGHBOR?
     
     #but we've lost voles that have no overlaps, so we have to add those back
     tags <- data %>% group_by(tag) %>% slice(1) %>% select(tag) #df of all tags recorded for site/month
@@ -543,9 +579,11 @@ for(i in 1:length(site_month_list)){
     weighted_overlap_full <- tag_by_tag %>% left_join(weighted_overlap, by=c("focal", "neighbor")) %>%
       filter(focal != neighbor) %>% #remove self-overlaps
       replace_na(list(pct_overlap=0)) %>% #replace NAs with 0 for overlaps that didn't occur
-      pivot_wider(id_cols = focal, names_from = neighbor, values_from = pct_overlap, values_fill=NA) %>% #convert long format edgelist to wide format adj matrix
-      column_to_rownames(var="focal") %>% #for tibble
+      pivot_wider(id_cols = neighbor, names_from = focal, values_from = pct_overlap, values_fill=NA) %>% #convert long format edgelist to wide format adj matrix
+      column_to_rownames(var="neighbor") %>% #for tibble
       as.matrix()
+    
+    ##column in FOCAL, row is NEIGHBOR - "How much of FOCAL's HR do they share with NEIGHBOR?"
     
     #https://stackoverflow.com/questions/77115183/reorder-matrix-rows-and-columns-based-on-alphabetical-order-of-colnames-and-rown
     weighted_overlap_full <- weighted_overlap_full[sort(rownames(weighted_overlap_full)), sort(colnames(weighted_overlap_full))]
@@ -565,7 +603,7 @@ for(i in 1:length(site_month_list)){
 names(pct_overlap_list) <- names(site_month_list)
 
 #rename the sublist items (months) for each site
-#accounting for the fact that most sites have 5 months of data but some have 4 (1 or 2 sites in 2023)
+#accounting for the fact that most sites have 5 months of data but some have 4
 for(i in 1:length(pct_overlap_list)){
   ifelse( length(pct_overlap_list[[i]]) == 5,
           names(pct_overlap_list[[i]]) <- c("june", "july", "aug", "sept", "oct"),
@@ -627,6 +665,11 @@ edges_summary23 <- edges_summary23 %>% drop_na(weight) %>% filter(weight>0) %>%
 saveRDS(edges_summary23, "edges_summary23.rds")
 
 ####---------- end ---------------------------------------
+
+
+
+
+
 
 
 
