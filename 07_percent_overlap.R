@@ -8,6 +8,13 @@
   #output: "pct_overlap_list2#" which is a nested list of adj matrices per month/site
   #output: "edges_summary2#" a long-ass df (edge list) of pct overlap between all voles in a year
 
+#26 March 2025
+#this code now creates HRs of variable size:
+  #if vole was caught at least twice in a season, their HR_rad is the mean distance between trapped locs and centroid
+  #if vole was caught 1x or only in 1 trap, their HR_rad is based on estimated kernel, scaled smaller for the more times
+    #they were caught in the same trap
+
+####### all this code was run 3.26.25 so pct_overlap_list21, 22, 23 and edges_summary21, 22, 23 are up to date
 
 # load packages
 library(here) #v 1.0.0
@@ -34,33 +41,41 @@ centroids21 <- readRDS(here("monthly_centroids21.rds")) %>% rename(tag = Tag_ID)
 centroids22 <- readRDS(here("monthly_centroids22.rds")) %>% rename(tag = Tag_ID)
 centroids23 <- readRDS(here("monthly_centroids23.rds")) %>% rename(tag = Tag_ID)
 
-
-#load fulltrap data (trapping metadata for each capture) - pull PIT tag, month, site
+#load fulltrap data (trim to necessary trapping metadata for each capture)
 ft21 <- readRDS(here("fulltrap21_11.11.24.rds"))
-trapmetadata21 <- ft21 %>% dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
-  group_by(tag, month) %>% slice(1)
+trapmetadata21 <- ft21 %>% group_by(season, tag) %>%
+  mutate(caps_per_season = length(tag), 
+         traps_per_season = n_distinct(trap)) %>% ungroup() %>% #calculate caps / traps per season
+  dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder, caps_per_season, traps_per_season)) %>%
+  group_by(tag, month) %>% slice(1) #keep one row per vole/month
 
 ft22 <- readRDS(here("fulltrap22_11.11.24.rds"))
-trapmetadata22 <- ft22 %>% dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
-  group_by(tag, month) %>% slice(1)
+trapmetadata22 <- ft22 %>% group_by(season, tag) %>%
+  mutate(caps_per_season = length(tag), 
+         traps_per_season = n_distinct(trap)) %>% ungroup() %>% 
+  dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder, caps_per_season, traps_per_season)) %>%
+  group_by(tag, month) %>% slice(1) #keep one row per vole/month
 
 ft23 <- readRDS(here("fulltrap23_11.11.24.rds"))
-trapmetadata23 <- ft23 %>% dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder)) %>%
-  group_by(tag, month) %>% slice(1)
+trapmetadata23 <- ft23 %>% group_by(season, tag) %>%
+  mutate(caps_per_season = length(tag), 
+         traps_per_season = n_distinct(trap)) %>% ungroup() %>% 
+  dplyr::select(c(year, season, trt, site, month, tag, sex, season_breeder, caps_per_season, traps_per_season)) %>%
+  group_by(tag, month) %>% slice(1) #keep one row per vole/month
 
 
 ####--------------------------------------
 
 ### SUMMARIZE mean space use kernel size (50% core and 95% peripheral) by functional group, trt, year ####
-### using the a and b params for each fxnl group and plotting space use size in area (meters^2) ####
+### using the a and b params for each fxnl group and calculate radius of space use  ####
 
-#space use data - included both core 50% and periphery 95% HR
-spaceusedata <- rbind(params21, params22, params23) %>%
+#mean space use kernel data - included both core 50% and periphery 95% HR
+spaceusekernels <- rbind(params21, params22, params23) %>%
   # mutate(rad_50_trap = (log((1/0.5)-1) + a) / (-b)) %>% #calculate the radius ("trap units") where probability of detection is 50%
   # mutate(rad_50_m = rad_50_trap*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
   mutate(rad_95_trap = (log((1/0.05)-1) + a) / (-b)) %>% #calculate the radius ("trap units") where probability of detection is 95%
   mutate(rad_95_m = rad_95_trap*10) %>% #multiply by 10 since a,b parameters are calculated in 'trap units' and traps are 10m apart
-  separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "breeder")) %>%
+  separate_wider_delim(stsb, delim="_", names=c("season", "foodtrt", "helmtrt", "sex", "season_breeder")) %>%
   unite(trt, foodtrt, helmtrt) %>%
   dplyr::select(-c(a,b,rad_95_m)) %>%
   rename(HR_rad = rad_95_trap) %>% #using the trap units version of 95% peripheral HR
@@ -79,132 +94,139 @@ spaceusedata <- rbind(params21, params22, params23) %>%
 ## the goal of the following code is to more explicitly estimate space use for voles with enough captures
   # in a season to have some idea of what they do. Of course, then we have the issue that summer and fall
   # are different lengths, BUT we're just going to go with it
-  # I think what is best is if we let voles with at least 3 captures/season have a HR that reflects their
-  # true space use. Anyone with only 1-2 captures in a season gets the avg HR size for their fxnl group.
-  # -- BUT -- what about individuals with 3+ captures in the same trap?
-
-# # YES - there are 23, 28, and 10 voles that are caught at least 3x in a season and only in 1 trap (max caps/season = 6)
-# check <- ft23 %>% group_by(season, tag) %>% mutate(caps_per_season = length(tag), traps_per_season = n_distinct(trap)) %>% ungroup() %>%
-#   filter(caps_per_season>2 & traps_per_season==1) 
-# check %>% summarise(n=n_distinct(tag))
-# ## so we need to do something about these guys because we can *assume* that they have a smaller HR than average
-
-
+  # Dave Kennedy (and I? March 25, 2025) decided that all voles with at least 2 captures/season get a HR 
+      # that reflects their observed space use
+  # voles with 1 cap/season OR captures in only 1 trap will have a HR that is a scaled version of the kernel estimate
+  # so that HR size estimate gets smaller the more often you're caught in 1 spot
 
 
 ###----------2021-----------
 
-#calculate weighted average trapped location per SEASON per vole
+#calculate weighted average trapped location per SEASON per vole (all voles)
 season.centroids21 <- ft21 %>% group_by(site, season, tag) %>%
   mutate(s.x = mean(x),
          s.y = mean(y)) %>% #weighted average centroid per SEASON
-  select(site, season, tag, s.x, s.y) %>%
-  slice(1) #keep one entry per vole
+  select(site, season, tag, s.x, s.y) %>% 
+  slice(1) %>% ungroup() #keep one entry per vole
 
 #join fulltrap with SEASONAL centroid locations per vole
 #calculate mean trapped dist from centroid per season (not quite a variance... more like std dev)
 #https://stats.stackexchange.com/questions/13272/2d-analog-of-standard-deviation
-  #std deviation lives in the same units as your data, variance is units^2
-season.rad21 <- ft21 %>% select(site, season, month, occ.sess, tag, x, y) %>% #trim down fulltrap to just what we need
+#std deviation lives in the same units as your data, variance is units^2
+season.rad21 <- ft21 %>% 
+  group_by(season, tag) %>% mutate(caps_per_season = length(tag), 
+                                   traps_per_season = n_distinct(trap)) %>% #calc n traps / caps per season
+  #do this for all voles with at least 2 captures and caught in different traps
+  filter(caps_per_season>1 & traps_per_season>1) %>% ungroup() %>%
+  select(site, season, month, occ.sess, tag, x, y) %>% #trim down fulltrap to just what we need
   left_join(season.centroids21, by=c("site", "season", "tag")) %>%
   # mutate(x = x*10, y = y*10,
   #        s.x = s.x*10, s.y = s.y*10) %>% #convert trap units to meters
   mutate(dist = sqrt((x-s.x)^2+(y-s.y)^2)) %>% #calculate dist bw each trapped location and centroid
   group_by(site, season, tag) %>%
-  mutate(caps_per_season = length(tag)) %>% filter(caps_per_season>2) %>% #only keep voles with at least 3 caps/season
-  summarise(HR_rad = mean(dist)) %>% #units of dist is CURRENTLY TRAP UNITS (*10 to get meters)
-  mutate(HR_rad = case_when(HR_rad == 0 ~ 0.5, HR_rad != 0 ~ HR_rad)) ##FOR NOW - give voles with 3+ caps in one trap a rad of 0.5
+  summarise(HR_rad = mean(dist)) #units of dist is CURRENTLY TRAP UNITS (*10 to get meters)
 
-### NOTE ### voles with 3+ caps/season AND traps/season=1 will have HR_rad=0
+### NOTE ### VOLES with only 1 capture/season or caught x times but only in 1 trap ARE NOT IN THIS DATASET
 
-############### WHAT makes sense here? What size HR should those voles caught only in 1 trap have?
 
 ###-----------2022------------
 
-#calculate weighted average trapped location per SEASON per vole
+#calculate weighted average trapped location per SEASON per vole (all voles)
 season.centroids22 <- ft22 %>% group_by(site, season, tag) %>%
   mutate(s.x = mean(x),
          s.y = mean(y)) %>% #weighted average centroid per SEASON
   select(site, season, tag, s.x, s.y) %>%
-  slice(1) #keep one entry per vole
+  slice(1) %>% ungroup() #keep one entry per vole
 
 #join fulltrap with SEASONAL centroid locations per vole
 #calculate mean trapped dist from centroid per season (not quite a variance... more like std dev)
 #https://stats.stackexchange.com/questions/13272/2d-analog-of-standard-deviation
-  #std deviation lives in the same units as your data, variance is units^2
-season.rad22 <- ft22 %>% select(site, season, month, occ.sess, tag, x, y) %>% #trim down fulltrap to just what we need
+#std deviation lives in the same units as your data, variance is units^2
+season.rad22 <- ft22 %>% 
+  group_by(season, tag) %>% mutate(caps_per_season = length(tag), 
+                                   traps_per_season = n_distinct(trap)) %>% #calc n traps / caps per season
+  #do this for all voles with at least 2 captures and caught in different traps
+  filter(caps_per_season>1 & traps_per_season>1) %>% ungroup() %>%
+  select(site, season, month, occ.sess, tag, x, y) %>% #trim down fulltrap to just what we need
   left_join(season.centroids22, by=c("site", "season", "tag")) %>%
   # mutate(x = x*10, y = y*10,
   #        s.x = s.x*10, s.y = s.y*10) %>% #convert trap units to meters
   mutate(dist = sqrt((x-s.x)^2+(y-s.y)^2)) %>% #calculate dist bw each trapped location and centroid
   group_by(site, season, tag) %>%
-  mutate(caps_per_season = length(tag)) %>% filter(caps_per_season>2) %>% #only keep voles with at least 3 caps/season
-  summarise(HR_rad = mean(dist)) %>% #units of dist is CURRENTLY TRAP UNITS (*10 to get meters)
-  mutate(HR_rad = case_when(HR_rad == 0 ~ 0.5, HR_rad != 0 ~ HR_rad)) ##FOR NOW - give voles with 3+ caps in one trap a rad of 0.5
+  summarise(HR_rad = mean(dist)) #units of dist is CURRENTLY TRAP UNITS (*10 to get meters)
 
+### NOTE ### VOLES with only 1 capture/season or caught x times but only in 1 trap ARE NOT IN THIS DATASET
 
-### NOTE ### voles with 3+ caps/season AND traps/season=1 will have HR_rad=0
 
 ###----------2023-------------
 
-#calculate weighted average trapped location per SEASON per vole
+#calculate weighted average trapped location per SEASON per vole (all voles)
 season.centroids23 <- ft23 %>% group_by(site, season, tag) %>%
   mutate(s.x = mean(x),
          s.y = mean(y)) %>% #weighted average centroid per SEASON
   select(site, season, tag, s.x, s.y) %>%
-  slice(1) #keep one entry per vole
+  slice(1) %>% ungroup() #keep one entry per vole
 
 #join fulltrap with SEASONAL centroid locations per vole
 #calculate mean trapped dist from centroid per season (not quite a variance... more like std dev)
 #https://stats.stackexchange.com/questions/13272/2d-analog-of-standard-deviation
   #std deviation lives in the same units as your data, variance is units^2
-season.rad23 <- ft23 %>% select(site, season, month, occ.sess, tag, x, y) %>% #trim down fulltrap to just what we need
+season.rad23 <- ft23 %>% 
+  group_by(season, tag) %>% mutate(caps_per_season = length(tag), 
+                                   traps_per_season = n_distinct(trap)) %>% #calc n traps / caps per season
+  #do this for all voles with at least 2 captures and caught in different traps
+  filter(caps_per_season>1 & traps_per_season>1) %>% ungroup() %>%
+  select(site, season, month, occ.sess, tag, x, y) %>% #trim down fulltrap to just what we need
   left_join(season.centroids23, by=c("site", "season", "tag")) %>%
   # mutate(x = x*10, y = y*10,
   #        s.x = s.x*10, s.y = s.y*10) %>% #convert trap units to meters
   mutate(dist = sqrt((x-s.x)^2+(y-s.y)^2)) %>% #calculate dist bw each trapped location and centroid
   group_by(site, season, tag) %>%
-  mutate(caps_per_season = length(tag)) %>% filter(caps_per_season>2) %>% #only keep voles with at least 3 caps/season
-  summarise(HR_rad = mean(dist)) %>% #units of dist is CURRENTLY TRAP UNITS (*10 to get meters)
-  mutate(HR_rad = case_when(HR_rad == 0 ~ 0.5, HR_rad != 0 ~ HR_rad)) ##FOR NOW - give voles with 3+ caps in one trap a rad of 0.5
+  summarise(HR_rad = mean(dist)) #units of dist is CURRENTLY TRAP UNITS (*10 to get meters)
 
-### NOTE ### voles with 3+ caps/season AND traps/season=1 will have HR_rad=0
+### NOTE ### VOLES with only 1 capture/season or caught x times but only in 1 trap ARE NOT IN THIS DATASET
 
 
 
 ##-----------------------------------------------
 
 #2021 join all the data needed for HR circles
-homerange21 <- trapmetadata21 %>% rename(breeder = season_breeder) %>% 
-  left_join(season.rad21, by=c("season", "site", "tag")) %>% #add HR_rad for known seasonal HRs
-  rows_patch(spaceusedata, by=c("year", "season", "trt", "sex", "breeder"), unmatched = "ignore") %>%
-  # left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>% 
-      #use this if NOT using seasonal HRs - replaces two lines above
+homerange21 <- trapmetadata21 %>% #has traps/caps per season
+  left_join(season.rad21, by=c("season", "site", "tag")) %>% #add HR_rad for known seasonal HRs (caught at least 2x, in different traps)
+  #patch in HR_rad from kernel estimates for voles with only 1 cap / caught in only 1 trap
+  rows_patch(spaceusekernels, by=c("year", "season", "trt", "sex", "season_breeder"), unmatched = "ignore") %>%
+  #for voles with only 1 cap / caught in only 1 trap, adjust HR to be kernel est / sqrt(number of times observed in 1 trap)
+  #ie the more we see a vole in only 1 trap, the smaller their HR estimate will be
+  mutate(HR_rad = case_when(traps_per_season == 1 ~ HR_rad/sqrt(caps_per_season),
+                            traps_per_season != 1 ~ HR_rad)) %>%
   left_join(centroids21, by=c("tag", "month", "site")) %>% #monthly centroid locations (x,y)
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>%
-  rename(season_breeder = breeder) %>%
   unite(fxnl_grp, sex, season_breeder, sep="_")
 
 #2022 join all the data needed for HR circles
-homerange22 <- trapmetadata22 %>% rename(breeder = season_breeder) %>% 
-  left_join(season.rad22, by=c("season", "site", "tag")) %>% #add HR_rad for known seasonal HRs
-  rows_patch(spaceusedata, by=c("year", "season", "trt", "sex", "breeder"), unmatched = "ignore") %>%
-  # left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>% 
-  #use this if NOT using seasonal HRs - replaces two lines above 
+homerange22 <- trapmetadata22 %>% #has traps/caps per season
+  left_join(season.rad22, by=c("season", "site", "tag")) %>% #add HR_rad for known seasonal HRs (caught at least 2x, in different traps)
+  #patch in HR_rad from kernel estimates for voles with only 1 cap / caught in only 1 trap
+  rows_patch(spaceusekernels, by=c("year", "season", "trt", "sex", "season_breeder"), unmatched = "ignore") %>%
+  #for voles with only 1 cap / caught in only 1 trap, adjust HR to be kernel est / sqrt(number of times observed in 1 trap)
+  #ie the more we see a vole in only 1 trap, the smaller their HR estimate will be
+  mutate(HR_rad = case_when(traps_per_season == 1 ~ HR_rad/sqrt(caps_per_season),
+                            traps_per_season != 1 ~ HR_rad)) %>%
   left_join(centroids22, by=c("tag", "month", "site")) %>% #monthly centroid locations (x,y)
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>%
-  rename(season_breeder = breeder) %>%
   unite(fxnl_grp, sex, season_breeder, sep="_")
 
 #2023 join all the data needed for HR circles
-homerange23 <- trapmetadata23 %>% rename(breeder = season_breeder) %>% 
-  left_join(season.rad23, by=c("season", "site", "tag")) %>% #add HR_rad for known seasonal HRs
-  rows_patch(spaceusedata, by=c("year", "season", "trt", "sex", "breeder"), unmatched = "ignore") %>%
-  # left_join(spaceusedata, by=c("year", "season", "trt", "sex", "breeder")) %>% 
-  #use this if NOT using seasonal HRs - replaces two lines above
+homerange23 <- trapmetadata23 %>% #has traps/caps per season
+  left_join(season.rad23, by=c("season", "site", "tag")) %>% #add HR_rad for known seasonal HRs (caught at least 2x, in different traps)
+  #patch in HR_rad from kernel estimates for voles with only 1 cap / caught in only 1 trap
+  rows_patch(spaceusekernels, by=c("year", "season", "trt", "sex", "season_breeder"), unmatched = "ignore") %>%
+  #for voles with only 1 cap / caught in only 1 trap, adjust HR to be kernel est / sqrt(number of times observed in 1 trap)
+  #ie the more we see a vole in only 1 trap, the smaller their HR estimate will be
+  mutate(HR_rad = case_when(traps_per_season == 1 ~ HR_rad/sqrt(caps_per_season),
+                                   traps_per_season != 1 ~ HR_rad)) %>%
   left_join(centroids23, by=c("tag", "month", "site")) %>% #monthly centroid locations (x,y)
   mutate(month = factor(month, levels=c("june", "july", "aug", "sept", "oct"))) %>%
-  rename(season_breeder = breeder) %>%
   unite(fxnl_grp, sex, season_breeder, sep="_")
 
 
